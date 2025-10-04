@@ -115,7 +115,7 @@ const Dashboard = () => {
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Activities */}
+       {/* Recent Activities */}
         <Card className="bg-gradient-card border-border/50 shadow-elegant">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -124,53 +124,9 @@ const Dashboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {[
-              {
-                action: "New user registration",
-                user: "john.doe@example.com",
-                time: "2 minutes ago",
-                status: "success",
-              },
-              {
-                action: "Job submission",
-                user: "Design project #1247",
-                time: "5 minutes ago",
-                status: "pending",
-              },
-              {
-                action: "Withdrawal request",
-                user: "₹500.00 - jane.smith",
-                time: "10 minutes ago",
-                status: "warning",
-              },
-              {
-                action: "Support ticket",
-                user: "Ticket #4821",
-                time: "15 minutes ago",
-                status: "error",
-              },
-            ].map((activity, index) => (
-              <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-background/30 border border-border/30">
-                <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-full ${
-                    activity.status === 'success' ? 'bg-success/10 text-success' :
-                    activity.status === 'pending' ? 'bg-warning/10 text-warning' :
-                    activity.status === 'warning' ? 'bg-warning/10 text-warning' :
-                    'bg-destructive/10 text-destructive'
-                  }`}>
-                    {activity.status === 'success' && <CheckCircle className="h-4 w-4" />}
-                    {activity.status === 'pending' && <Clock className="h-4 w-4" />}
-                    {activity.status === 'warning' && <AlertCircle className="h-4 w-4" />}
-                    {activity.status === 'error' && <AlertCircle className="h-4 w-4" />}
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">{activity.action}</p>
-                    <p className="text-sm text-muted-foreground">{activity.user}</p>
-                  </div>
-                </div>
-                <span className="text-xs text-muted-foreground">{activity.time}</span>
-              </div>
-            ))}
+            <div className="text-center py-8 text-muted-foreground">
+              <p>Recent activity tracking coming soon</p>
+            </div>
           </CardContent>
         </Card>
 
@@ -192,12 +148,12 @@ const Dashboard = () => {
                 <p className="text-xs text-success/80 mt-1">All systems operational</p>
               </div>
               
-              <div className="p-4 rounded-lg bg-warning/10 border border-warning/20">
+              <div className="p-4 rounded-lg bg-success/10 border border-success/20">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-warning">Database</span>
-                  <Badge variant="outline" className="border-warning text-warning">Warning</Badge>
+                  <span className="text-sm font-medium text-success">Database</span>
+                  <Badge variant="outline" className="border-success text-success">Healthy</Badge>
                 </div>
-                <p className="text-xs text-warning/80 mt-1">High load detected</p>
+                <p className="text-xs text-success/80 mt-1">Connected</p>
               </div>
 
               <div className="p-4 rounded-lg bg-success/10 border border-success/20">
@@ -205,15 +161,15 @@ const Dashboard = () => {
                   <span className="text-sm font-medium text-success">API Status</span>
                   <Badge variant="outline" className="border-success text-success">Healthy</Badge>
                 </div>
-                <p className="text-xs text-success/80 mt-1">Response time: 120ms</p>
+                <p className="text-xs text-success/80 mt-1">All endpoints active</p>
               </div>
 
               <div className="p-4 rounded-lg bg-info/10 border border-info/20">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-info">Backup</span>
-                  <Badge variant="outline" className="border-info text-info">Completed</Badge>
+                  <Badge variant="outline" className="border-info text-info">Automatic</Badge>
                 </div>
-                <p className="text-xs text-info/80 mt-1">Last: 2 hours ago</p>
+                <p className="text-xs text-info/80 mt-1">Continuous backup</p>
               </div>
             </div>
           </CardContent>

@@ -19,108 +19,48 @@ import {
   MessageSquare
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useEarnings } from "@/hooks/useEarnings";
+import { useTasks } from "@/hooks/useTasks";
+import { Code, Image as ImageIcon } from "lucide-react";
 
 export default function Earnings() {
   const navigate = useNavigate();
+  const { earnings, loading } = useEarnings();
+  const { tasks } = useTasks();
+
+  // Calculate earnings data from real data
   const earningsData = {
-    totalEarned: 1250,
-    currentBalance: 750,
-    withdrawn: 500,
-    pendingPayments: 125,
-    thisMonth: 650,
-    lastMonth: 480,
-    growthRate: 35.4
+    totalEarned: earnings.todayEarning + earnings.weekEarning + earnings.monthEarning,
+    currentBalance: earnings.balance,
+    withdrawn: 0, // TODO: Track withdrawals
+    pendingPayments: tasks.filter(t => t.status === 'pending').reduce((sum, t) => sum + t.amount, 0),
+    thisMonth: earnings.monthEarning,
+    lastMonth: 0, // TODO: Track last month
+    growthRate: 0 // TODO: Calculate growth
   };
 
-  const transactions = [
-    {
-      id: 1,
-      type: "earning",
-      title: "Google Review Task",
-      amount: 25,
-      date: "2024-01-16",
-      status: "completed",
-      category: "review",
-      icon: Star
-    },
-    {
-      id: 2,
-      type: "earning",
-      title: "App Installation",
-      amount: 35,
-      date: "2024-01-15",
-      status: "completed",
-      category: "app",
-      icon: Smartphone
-    },
-    {
-      id: 3,
-      type: "withdrawal",
-      title: "Bank Transfer",
-      amount: -200,
-      date: "2024-01-14",
-      status: "completed",
-      category: "withdrawal",
-      icon: CreditCard
-    },
-    {
-      id: 4,
-      type: "earning",
-      title: "Website Survey",
-      amount: 20,
-      date: "2024-01-14",
-      status: "completed",
-      category: "survey",
-      icon: Globe
-    },
-    {
-      id: 5,
-      type: "earning",
-      title: "Game Task",
-      amount: 50,
-      date: "2024-01-13",
-      status: "pending",
-      category: "game",
-      icon: Gamepad2
-    },
-    {
-      id: 6,
-      type: "earning",
-      title: "Social Media Task",
-      amount: 15,
-      date: "2024-01-12",
-      status: "completed",
-      category: "social",
-      icon: MessageSquare
-    },
-    {
-      id: 7,
-      type: "withdrawal",
-      title: "PayPal Transfer",
-      amount: -300,
-      date: "2024-01-10",
-      status: "completed",
-      category: "withdrawal",
-      icon: CreditCard
-    },
-  ];
+  // Get recent transactions from tasks
+  const transactions = tasks.slice(0, 10).map(task => ({
+    id: task.id,
+    type: "earning",
+    title: task.jobs?.title || "Task",
+    amount: task.amount,
+    date: task.submitted_at || task.created_at,
+    status: task.status,
+    category: task.jobs?.category || 'general',
+    icon: task.jobs?.type === 'code' ? Code : ImageIcon
+  }));
 
-  const monthlyData = [
-    { month: "Aug", earnings: 320 },
-    { month: "Sep", earnings: 445 },
-    { month: "Oct", earnings: 380 },
-    { month: "Nov", earnings: 520 },
-    { month: "Dec", earnings: 480 },
-    { month: "Jan", earnings: 650 },
-  ];
-
-  const categoryEarnings = [
-    { category: "Reviews", amount: 375, percentage: 30, icon: Star, color: "text-warning" },
-    { category: "App Install", amount: 315, percentage: 25.2, icon: Smartphone, color: "text-primary" },
-    { category: "Surveys", amount: 250, percentage: 20, icon: Globe, color: "text-success" },
-    { category: "Games", amount: 200, percentage: 16, icon: Gamepad2, color: "text-accent" },
-    { category: "Social Media", amount: 110, percentage: 8.8, icon: MessageSquare, color: "text-info" },
-  ];
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading earnings...</p>
+        </div>
+      </div>
+    );
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -204,32 +144,19 @@ export default function Earnings() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-        {/* Category Breakdown */}
+          {/* Category Breakdown */}
         <Card className="bg-card/50 backdrop-blur border-border/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Star className="h-5 w-5" />
-              Earnings by Category
+              Recent Earnings
             </CardTitle>
-            <CardDescription>Your earnings breakdown by task type</CardDescription>
+            <CardDescription>Your latest task completions</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {categoryEarnings.map((category, index) => (
-              <div key={index} className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-background/50">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-accent/20">
-                    <category.icon className={`h-4 w-4 ${category.color}`} />
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm text-foreground">{category.category}</p>
-                    <p className="text-xs text-muted-foreground">{category.percentage}% of total</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium text-success">₹{category.amount}</p>
-                </div>
-              </div>
-            ))}
+            <p className="text-sm text-muted-foreground">
+              All earnings are tracked in real-time from your completed tasks
+            </p>
           </CardContent>
         </Card>
 
@@ -330,57 +257,42 @@ export default function Earnings() {
             
             <TabsContent value="earnings" className="mt-6">
               <div className="space-y-3">
-                {transactions.filter(t => t.type === 'earning').map((transaction) => (
-                  <div key={transaction.id} className="flex items-center justify-between p-4 rounded-lg border border-border/50 bg-background/50">
-                    <div className="flex items-center gap-3">
-                     <div className="p-2 rounded-lg bg-success/10">
-                       <transaction.icon className="h-4 w-4 text-success" />
-                     </div>
-                      <div>
-                        <p className="font-medium text-sm text-foreground">{transaction.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(transaction.date).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-success">+₹{transaction.amount}</p>
-                      </div>
-                      <Badge variant="outline" className={getStatusColor(transaction.status)}>
-                        {transaction.status}
-                      </Badge>
-                    </div>
+                {transactions.filter(t => t.type === 'earning').length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No earnings yet
                   </div>
-                ))}
+                ) : (
+                  transactions.filter(t => t.type === 'earning').map((transaction) => (
+                    <div key={transaction.id} className="flex items-center justify-between p-4 rounded-lg border border-border/50 bg-background/50">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-success/10">
+                          <transaction.icon className="h-4 w-4 text-success" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm text-foreground">{transaction.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(transaction.date).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <p className="text-sm font-medium text-success">+₹{transaction.amount}</p>
+                        </div>
+                        <Badge variant="outline" className={getStatusColor(transaction.status)}>
+                          {transaction.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </TabsContent>
             
             <TabsContent value="withdrawals" className="mt-6">
-              <div className="space-y-3">
-                {transactions.filter(t => t.type === 'withdrawal').map((transaction) => (
-                  <div key={transaction.id} className="flex items-center justify-between p-4 rounded-lg border border-border/50 bg-background/50">
-                    <div className="flex items-center gap-3">
-                     <div className="p-2 rounded-lg bg-destructive/10">
-                       <transaction.icon className="h-4 w-4 text-destructive" />
-                     </div>
-                      <div>
-                        <p className="font-medium text-sm text-foreground">{transaction.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(transaction.date).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-destructive">₹{Math.abs(transaction.amount)}</p>
-                      </div>
-                      <Badge variant="outline" className={getStatusColor(transaction.status)}>
-                        {transaction.status}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
+              <div className="text-center py-8 text-muted-foreground">
+                <p>Withdrawal history will appear here</p>
+                <p className="text-sm mt-2">Withdrawals are processed automatically by admin</p>
               </div>
             </TabsContent>
           </Tabs>

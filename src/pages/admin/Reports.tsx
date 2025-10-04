@@ -26,83 +26,11 @@ import {
   Users,
   CreditCard,
 } from "lucide-react";
+import { useAdminReports } from "@/hooks/useAdminReports";
 
 const Reports = () => {
   const [searchTerm, setSearchTerm] = useState("");
-
-  const transactionHistory = [
-    {
-      id: "TXN-123456",
-      type: "Deposit",
-      user: "John Doe",
-      amount: "₹1,250.00",
-      status: "Completed",
-      date: "2024-01-15 14:30",
-      method: "Credit Card",
-    },
-    {
-      id: "TXN-123455",
-      type: "Withdrawal",
-      user: "Jane Smith",
-      amount: "₹850.00",
-      status: "Pending",
-      date: "2024-01-15 12:15",
-      method: "Bank Transfer",
-    },
-    {
-      id: "TXN-123454",
-      type: "Payment",
-      user: "Mike Johnson",
-      amount: "₹500.00",
-      status: "Completed",
-      date: "2024-01-14 16:45",
-      method: "PayPal",
-    },
-  ];
-
-  const loginHistory = [
-    {
-      id: 1,
-      user: "John Doe",
-      email: "john.doe@example.com",
-      ip: "192.168.1.100",
-      location: "New York, US",
-      device: "Chrome on Windows",
-      date: "2024-01-15 14:30",
-      status: "Success",
-    },
-    {
-      id: 2,
-      user: "Jane Smith",
-      email: "jane.smith@example.com",
-      ip: "10.0.0.25",
-      location: "London, UK",
-      device: "Safari on macOS",
-      date: "2024-01-15 12:15",
-      status: "Success",
-    },
-  ];
-
-  const notificationHistory = [
-    {
-      id: 1,
-      recipient: "All Users",
-      type: "System Maintenance",
-      title: "Scheduled maintenance tonight",
-      status: "Sent",
-      date: "2024-01-15 10:00",
-      delivered: 12847,
-    },
-    {
-      id: 2,
-      recipient: "Premium Users",
-      type: "Feature Update",
-      title: "New dashboard features available",
-      status: "Sent",
-      date: "2024-01-14 14:30",
-      delivered: 3247,
-    },
-  ];
+  const { transactions, loading } = useAdminReports();
 
   const getTransactionIcon = (type: string) => {
     switch (type.toLowerCase()) {
@@ -120,17 +48,24 @@ const Reports = () => {
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
       case "completed":
+      case "approved":
       case "success":
       case "sent":
         return <Badge className="bg-success/10 text-success border-success/20">{status}</Badge>;
       case "pending":
         return <Badge variant="outline" className="border-warning text-warning">{status}</Badge>;
       case "failed":
+      case "rejected":
         return <Badge variant="destructive">{status}</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }
   };
+
+  const filteredTransactions = transactions.filter(t =>
+    t.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    t.id.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="p-6 space-y-6">
@@ -163,8 +98,8 @@ const Reports = () => {
               <DollarSign className="h-5 w-5 text-success" />
               <div>
                 <p className="text-sm text-muted-foreground">Total Transactions</p>
-                <p className="text-xl font-bold text-success">₹2.1M</p>
-                <p className="text-xs text-success">+15% this month</p>
+                <p className="text-xl font-bold text-success">{transactions.length}</p>
+                <p className="text-xs text-success">All time</p>
               </div>
             </div>
           </CardContent>
@@ -175,9 +110,9 @@ const Reports = () => {
             <div className="flex items-center gap-2">
               <Users className="h-5 w-5 text-info" />
               <div>
-                <p className="text-sm text-muted-foreground">Active Sessions</p>
-                <p className="text-xl font-bold text-info">3,247</p>
-                <p className="text-xs text-info">+8% from yesterday</p>
+                <p className="text-sm text-muted-foreground">Active Users</p>
+                <p className="text-xl font-bold text-info">Live Data</p>
+                <p className="text-xs text-info">Real-time</p>
               </div>
             </div>
           </CardContent>
@@ -188,9 +123,9 @@ const Reports = () => {
             <div className="flex items-center gap-2">
               <Bell className="h-5 w-5 text-warning" />
               <div>
-                <p className="text-sm text-muted-foreground">Notifications Sent</p>
-                <p className="text-xl font-bold text-warning">16,094</p>
-                <p className="text-xs text-warning">This week</p>
+                <p className="text-sm text-muted-foreground">Notifications</p>
+                <p className="text-xl font-bold text-warning">System Active</p>
+                <p className="text-xs text-warning">Enabled</p>
               </div>
             </div>
           </CardContent>
@@ -247,46 +182,59 @@ const Reports = () => {
                   Export CSV
                 </Button>
               </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Transaction ID</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>User</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Method</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {transactionHistory.map((transaction) => (
-                    <TableRow key={transaction.id} className="hover:bg-accent/50">
-                      <TableCell className="font-medium">{transaction.id}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {getTransactionIcon(transaction.type)}
-                          {transaction.type}
-                        </div>
-                      </TableCell>
-                      <TableCell>{transaction.user}</TableCell>
-                      <TableCell className="font-bold text-primary">{transaction.amount}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{transaction.method}</Badge>
-                      </TableCell>
-                      <TableCell>{getStatusBadge(transaction.status)}</TableCell>
-                      <TableCell className="text-muted-foreground">{transaction.date}</TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4 mr-1" />
-                          View
-                        </Button>
-                      </TableCell>
+              {loading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Loading transactions...</p>
+                </div>
+              ) : filteredTransactions.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No transactions found
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Transaction ID</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>User</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Method</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredTransactions.map((transaction) => (
+                      <TableRow key={transaction.id} className="hover:bg-accent/50">
+                        <TableCell className="font-medium">{transaction.id.slice(0, 8)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {getTransactionIcon(transaction.type)}
+                            {transaction.type}
+                          </div>
+                        </TableCell>
+                        <TableCell>{transaction.user_name}</TableCell>
+                        <TableCell className="font-bold text-primary">₹{transaction.amount.toFixed(2)}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{transaction.method}</Badge>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(transaction.status)}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {new Date(transaction.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="sm">
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </TabsContent>
 
             <TabsContent value="logins" className="space-y-4">
@@ -297,37 +245,9 @@ const Reports = () => {
                   Export CSV
                 </Button>
               </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>IP Address</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Device</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loginHistory.map((login) => (
-                    <TableRow key={login.id} className="hover:bg-accent/50">
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{login.user}</p>
-                          <p className="text-sm text-muted-foreground">{login.email}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <code className="text-xs bg-muted px-2 py-1 rounded">{login.ip}</code>
-                      </TableCell>
-                      <TableCell>{login.location}</TableCell>
-                      <TableCell className="text-muted-foreground">{login.device}</TableCell>
-                      <TableCell className="text-muted-foreground">{login.date}</TableCell>
-                      <TableCell>{getStatusBadge(login.status)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <div className="text-center py-8 text-muted-foreground">
+                Login tracking feature coming soon
+              </div>
             </TabsContent>
 
             <TabsContent value="notifications" className="space-y-4">
@@ -338,39 +258,9 @@ const Reports = () => {
                   Export CSV
                 </Button>
               </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Recipient</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Delivered</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {notificationHistory.map((notification) => (
-                    <TableRow key={notification.id} className="hover:bg-accent/50">
-                      <TableCell>
-                        <Badge variant="outline">{notification.recipient}</Badge>
-                      </TableCell>
-                      <TableCell>{notification.type}</TableCell>
-                      <TableCell className="font-medium">{notification.title}</TableCell>
-                      <TableCell className="font-bold text-primary">{notification.delivered.toLocaleString()}</TableCell>
-                      <TableCell>{getStatusBadge(notification.status)}</TableCell>
-                      <TableCell className="text-muted-foreground">{notification.date}</TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4 mr-1" />
-                          View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <div className="text-center py-8 text-muted-foreground">
+                Notification history feature coming soon
+              </div>
             </TabsContent>
           </Tabs>
         </CardContent>

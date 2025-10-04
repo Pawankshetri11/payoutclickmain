@@ -25,6 +25,7 @@ import {
   Phone,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useTickets } from "@/hooks/useTickets";
 
 export default function Support() {
   const [newTicketOpen, setNewTicketOpen] = useState(false);
@@ -35,38 +36,7 @@ export default function Support() {
     message: "",
   });
 
-  const mockTickets = [
-    {
-      id: "TKT-001",
-      subject: "Payment not received",
-      category: "Payment",
-      priority: "high",
-      status: "open",
-      created: "2024-01-15",
-      lastReply: "2024-01-15",
-      messages: 3,
-    },
-    {
-      id: "TKT-002",
-      subject: "Task verification issue",
-      category: "Technical",
-      priority: "medium",
-      status: "in_progress",
-      created: "2024-01-14",
-      lastReply: "2024-01-14",
-      messages: 2,
-    },
-    {
-      id: "TKT-003",
-      subject: "Account KYC question",
-      category: "Account",
-      priority: "low",
-      status: "resolved",
-      created: "2024-01-12",
-      lastReply: "2024-01-13",
-      messages: 1,
-    },
-  ];
+  const { tickets, loading } = useTickets();
 
   const handleSubmitTicket = async () => {
     if (!ticketForm.subject || !ticketForm.category || !ticketForm.message) {
@@ -301,15 +271,20 @@ export default function Support() {
           <CardDescription>View and track your support requests</CardDescription>
         </CardHeader>
         <CardContent>
-          {mockTickets.length > 0 ? (
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              <p className="text-sm text-muted-foreground mt-2">Loading tickets...</p>
+            </div>
+          ) : tickets.length > 0 ? (
             <div className="space-y-4">
-              {mockTickets.map((ticket) => (
+              {tickets.map((ticket) => (
                 <div key={ticket.id} className="border border-border/50 rounded-lg p-4 hover:bg-accent/50 transition-colors">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       {getStatusIcon(ticket.status)}
                       <h3 className="font-semibold text-foreground">{ticket.subject}</h3>
-                      <Badge variant="outline">{ticket.id}</Badge>
+                      <Badge variant="outline">{ticket.id.slice(0, 8)}</Badge>
                     </div>
                     <div className="flex items-center gap-2">
                       {getPriorityBadge(ticket.priority)}
@@ -319,11 +294,9 @@ export default function Support() {
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
                     <div className="flex items-center gap-4">
                       <span>Category: {ticket.category}</span>
-                      <span>{ticket.messages} messages</span>
                     </div>
                     <div className="flex items-center gap-4">
-                      <span>Created: {ticket.created}</span>
-                      <span>Last reply: {ticket.lastReply}</span>
+                      <span>Created: {new Date(ticket.created_at).toLocaleDateString()}</span>
                     </div>
                   </div>
                 </div>

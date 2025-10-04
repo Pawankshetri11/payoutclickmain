@@ -40,8 +40,12 @@ CREATE POLICY "Admins can manage all roles"
   ON public.user_roles FOR ALL
   USING (public.is_admin(auth.uid()));
 
+-- Drop existing functions if they exist
+DROP FUNCTION IF EXISTS public.is_admin(uuid);
+DROP FUNCTION IF EXISTS public.has_role(uuid, app_role);
+
 -- Create security definer function to check admin role
-CREATE OR REPLACE FUNCTION public.is_admin(user_id UUID)
+CREATE FUNCTION public.is_admin(user_id UUID)
 RETURNS BOOLEAN
 LANGUAGE SQL
 STABLE
@@ -55,7 +59,7 @@ AS $$
 $$;
 
 -- Create security definer function to check any role
-CREATE OR REPLACE FUNCTION public.has_role(_user_id UUID, _role app_role)
+CREATE FUNCTION public.has_role(_user_id UUID, _role app_role)
 RETURNS BOOLEAN
 LANGUAGE SQL
 STABLE
@@ -117,8 +121,12 @@ CREATE POLICY "Admins can update all profiles"
 -- 3. CREATE TRIGGER FOR NEW USER PROFILE
 -- =====================================================
 
+-- Drop existing trigger and function if they exist
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP FUNCTION IF EXISTS public.handle_new_user();
+
 -- Function to handle new user signup
-CREATE OR REPLACE FUNCTION public.handle_new_user()
+CREATE FUNCTION public.handle_new_user()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -135,9 +143,6 @@ BEGIN
   RETURN new;
 END;
 $$;
-
--- Drop trigger if exists and recreate
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 
 -- Create trigger for new user signup
 CREATE TRIGGER on_auth_user_created

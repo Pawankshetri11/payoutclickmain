@@ -78,6 +78,10 @@ export default {
         'gradient-primary': 'var(--gradient-primary)',
         'gradient-background': 'var(--gradient-background)',
         'gradient-card': 'var(--gradient-card)',
+        'gradient-user': 'var(--gradient-user)',
+        'gradient-success': 'var(--gradient-success)',
+        'gradient-warning': 'var(--gradient-warning)',
+        'gradient-secondary': 'var(--gradient-secondary)',
       },
       boxShadow: {
         'elegant': 'var(--shadow-elegant)',

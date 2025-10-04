@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useTasks } from "@/hooks/useTasks";
 import { 
   Clock,
   CheckCircle,
@@ -17,82 +18,18 @@ import {
   Timer,
   Upload,
   Eye,
-  AlertCircle
+  AlertCircle,
+  Code,
+  Image as ImageIcon
 } from "lucide-react";
 
 export default function MyTasks() {
-  const myTasks = [
-    {
-      id: 1,
-      title: "Write Google Review for Restaurant",
-      description: "Visit the restaurant and write an honest review",
-      category: "review",
-      reward: 25,
-      status: "in-progress",
-      progress: 75,
-      startedAt: "2024-01-15",
-      deadline: "2024-01-17",
-      icon: Star,
-      nextStep: "Submit review screenshot"
-    },
-    {
-      id: 2,
-      title: "Install Shopping App",
-      description: "Download and try the shopping app",
-      category: "app",
-      reward: 35,
-      status: "completed",
-      progress: 100,
-      startedAt: "2024-01-14",
-      completedAt: "2024-01-14",
-      icon: Smartphone,
-      paidAmount: 35
-    },
-    {
-      id: 3,
-      title: "Website Survey",
-      description: "Complete survey about online shopping",
-      category: "survey",
-      reward: 20,
-      status: "completed",
-      progress: 100,
-      startedAt: "2024-01-13",
-      completedAt: "2024-01-13",
-      icon: Globe,
-      paidAmount: 20
-    },
-    {
-      id: 4,
-      title: "Play Mobile Game",
-      description: "Reach level 5 in the mobile game",
-      category: "game",
-      reward: 50,
-      status: "pending",
-      progress: 0,
-      startedAt: "2024-01-16",
-      deadline: "2024-01-23",
-      icon: Gamepad2,
-      nextStep: "Download and start playing"
-    },
-    {
-      id: 5,
-      title: "Social Media Follow",
-      description: "Follow business accounts",
-      category: "social",
-      reward: 15,
-      status: "rejected",
-      progress: 100,
-      startedAt: "2024-01-12",
-      rejectedAt: "2024-01-13",
-      icon: MessageSquare,
-      rejectionReason: "Did not follow all required accounts"
-    },
-  ];
+  const { tasks, loading } = useTasks();
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "completed": return "bg-green-500/10 text-green-600 border-green-500/20";
-      case "in-progress": return "bg-blue-500/10 text-blue-600 border-blue-500/20";
+      case "completed":
+      case "approved": return "bg-green-500/10 text-green-600 border-green-500/20";
       case "pending": return "bg-yellow-500/10 text-yellow-600 border-yellow-500/20";
       case "rejected": return "bg-red-500/10 text-red-600 border-red-500/20";
       default: return "bg-gray-500/10 text-gray-600 border-gray-500/20";
@@ -101,8 +38,8 @@ export default function MyTasks() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "completed": return CheckCircle;
-      case "in-progress": return Clock;
+      case "completed":
+      case "approved": return CheckCircle;
       case "pending": return Timer;
       case "rejected": return XCircle;
       default: return AlertCircle;
@@ -110,16 +47,27 @@ export default function MyTasks() {
   };
 
   const tasksByStatus = {
-    all: myTasks,
-    pending: myTasks.filter(t => t.status === 'pending'),
-    "in-progress": myTasks.filter(t => t.status === 'in-progress'),
-    completed: myTasks.filter(t => t.status === 'completed'),
-    rejected: myTasks.filter(t => t.status === 'rejected'),
+    all: tasks,
+    pending: tasks.filter(t => t.status === 'pending'),
+    approved: tasks.filter(t => t.status === 'approved'),
+    rejected: tasks.filter(t => t.status === 'rejected'),
   };
 
-  const totalEarnings = myTasks
-    .filter(t => t.status === 'completed')
-    .reduce((sum, t) => sum + t.reward, 0);
+  const totalEarnings = tasks
+    .filter(t => t.status === 'approved')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const getTaskIcon = (type: string) => {
+    return type === 'code' ? Code : ImageIcon;
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-3 md:p-6 space-y-4 md:space-y-6">
@@ -137,20 +85,8 @@ export default function MyTasks() {
               <div className="flex items-center gap-3">
                 <CheckCircle className="h-8 w-8 text-green-500" />
                 <div>
-                  <p className="text-2xl font-bold text-foreground">{tasksByStatus.completed.length}</p>
-                  <p className="text-sm text-muted-foreground">Completed</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <Card className="bg-card/50 backdrop-blur border-border/50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <Clock className="h-8 w-8 text-blue-500" />
-                <div>
-                  <p className="text-2xl font-bold text-foreground">{tasksByStatus["in-progress"].length}</p>
-                  <p className="text-sm text-muted-foreground">In Progress</p>
+                  <p className="text-2xl font-bold text-foreground">{tasksByStatus.approved.length}</p>
+                  <p className="text-sm text-muted-foreground">Approved</p>
                 </div>
               </div>
             </CardContent>
@@ -163,6 +99,18 @@ export default function MyTasks() {
                 <div>
                   <p className="text-2xl font-bold text-foreground">{tasksByStatus.pending.length}</p>
                   <p className="text-sm text-muted-foreground">Pending</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="bg-card/50 backdrop-blur border-border/50">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <XCircle className="h-8 w-8 text-red-500" />
+                <div>
+                  <p className="text-2xl font-bold text-foreground">{tasksByStatus.rejected.length}</p>
+                  <p className="text-sm text-muted-foreground">Rejected</p>
                 </div>
               </div>
             </CardContent>
@@ -184,37 +132,39 @@ export default function MyTasks() {
 
       {/* Tasks Tabs */}
       <Tabs defaultValue="all" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 gap-1">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-1">
           <TabsTrigger value="all" className="text-xs md:text-sm">All ({tasksByStatus.all.length})</TabsTrigger>
           <TabsTrigger value="pending" className="text-xs md:text-sm">Pending ({tasksByStatus.pending.length})</TabsTrigger>
-          <TabsTrigger value="in-progress" className="text-xs md:text-sm hidden md:inline-flex">In Progress ({tasksByStatus["in-progress"].length})</TabsTrigger>
-          <TabsTrigger value="completed" className="text-xs md:text-sm">Done ({tasksByStatus.completed.length})</TabsTrigger>
-          <TabsTrigger value="rejected" className="text-xs md:text-sm hidden md:inline-flex">Rejected ({tasksByStatus.rejected.length})</TabsTrigger>
+          <TabsTrigger value="approved" className="text-xs md:text-sm">Approved ({tasksByStatus.approved.length})</TabsTrigger>
+          <TabsTrigger value="rejected" className="text-xs md:text-sm">Rejected ({tasksByStatus.rejected.length})</TabsTrigger>
         </TabsList>
 
-        {Object.entries(tasksByStatus).map(([status, tasks]) => (
+        {Object.entries(tasksByStatus).map(([status, statusTasks]) => (
           <TabsContent key={status} value={status} className="mt-6">
             <div className="space-y-4">
-              {tasks.map((task) => {
+              {statusTasks.map((task) => {
                 const StatusIcon = getStatusIcon(task.status);
+                const TaskIcon = getTaskIcon(task.jobs?.type || 'code');
                 return (
                   <Card key={task.id} className="bg-card/50 backdrop-blur border-border/50">
                     <CardHeader>
-                      <div className="flex items-start justify-between">
+                      <div className="flex items-start justify-between flex-col md:flex-row gap-3">
                         <div className="flex items-center gap-3">
                           <div className="p-2 rounded-lg bg-primary/10">
-                            <task.icon className="h-5 w-5 text-primary" />
+                            <TaskIcon className="h-5 w-5 text-primary" />
                           </div>
                           <div>
-                            <CardTitle className="text-lg">{task.title}</CardTitle>
-                            <CardDescription className="mt-1">{task.description}</CardDescription>
+                            <CardTitle className="text-lg">{task.jobs?.title || 'Task'}</CardTitle>
+                            <CardDescription className="mt-1">
+                              {task.jobs?.category || 'General'}
+                            </CardDescription>
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
                           <div className="text-right">
-                            <div className="text-xl font-bold text-green-600">₹{task.reward}</div>
-                            {task.paidAmount && (
-                              <div className="text-xs text-green-500">Paid: ₹{task.paidAmount}</div>
+                            <div className="text-xl font-bold text-green-600">₹{task.amount}</div>
+                            {task.status === 'approved' && (
+                              <div className="text-xs text-green-500">Approved</div>
                             )}
                           </div>
                           <Badge variant="outline" className={`${getStatusColor(task.status)} flex items-center gap-1`}>
@@ -225,89 +175,63 @@ export default function MyTasks() {
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      {/* Progress Bar */}
-                      {task.status !== 'rejected' && (
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Progress</span>
-                            <span className="font-medium">{task.progress}%</span>
-                          </div>
-                          <Progress value={task.progress} className="h-2" />
-                        </div>
-                      )}
-
                       {/* Task Details */}
                       <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                         <div className="flex items-center gap-1">
                           <Calendar className="h-4 w-4" />
-                          Started: {new Date(task.startedAt).toLocaleDateString()}
+                          Submitted: {new Date(task.submitted_at).toLocaleDateString()}
                         </div>
-                        {task.deadline && (
-                          <div className="flex items-center gap-1">
-                            <Timer className="h-4 w-4" />
-                            Deadline: {new Date(task.deadline).toLocaleDateString()}
-                          </div>
-                        )}
-                        {task.completedAt && (
+                        {task.approved_at && (
                           <div className="flex items-center gap-1 text-green-600">
                             <CheckCircle className="h-4 w-4" />
-                            Completed: {new Date(task.completedAt).toLocaleDateString()}
+                            Approved: {new Date(task.approved_at).toLocaleDateString()}
                           </div>
                         )}
                       </div>
 
-                      {/* Next Step or Status Info */}
-                      {task.nextStep && task.status === 'in-progress' && (
-                        <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                          <p className="text-sm text-blue-600 font-medium">Next Step:</p>
-                          <p className="text-sm text-blue-600">{task.nextStep}</p>
+                      {/* Admin Notes */}
+                      {task.admin_notes && (
+                        <div className={`p-3 rounded-lg border ${
+                          task.status === 'rejected' 
+                            ? 'bg-red-500/10 border-red-500/20' 
+                            : 'bg-blue-500/10 border-blue-500/20'
+                        }`}>
+                          <p className={`text-sm font-medium ${
+                            task.status === 'rejected' ? 'text-red-600' : 'text-blue-600'
+                          }`}>
+                            {task.status === 'rejected' ? 'Rejection Reason:' : 'Admin Notes:'}
+                          </p>
+                          <p className={`text-sm ${
+                            task.status === 'rejected' ? 'text-red-600' : 'text-blue-600'
+                          }`}>
+                            {task.admin_notes}
+                          </p>
                         </div>
                       )}
 
-                      {task.rejectionReason && task.status === 'rejected' && (
-                        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-                          <p className="text-sm text-red-600 font-medium">Rejection Reason:</p>
-                          <p className="text-sm text-red-600">{task.rejectionReason}</p>
+                      {/* Submission Details */}
+                      {task.submitted_image && (
+                        <div className="p-3 bg-muted rounded-lg">
+                          <p className="text-sm text-muted-foreground mb-2">Submitted Image:</p>
+                          <img 
+                            src={task.submitted_image} 
+                            alt="Submission" 
+                            className="max-w-xs rounded border"
+                          />
                         </div>
                       )}
-
-                      {/* Action Buttons */}
-                      <div className="flex gap-2 pt-2">
-                        {task.status === 'in-progress' && (
-                          <>
-                            <Button size="sm" className="gap-2">
-                              <Upload className="h-4 w-4" />
-                              Submit Proof
-                            </Button>
-                            <Button variant="outline" size="sm" className="gap-2">
-                              <Eye className="h-4 w-4" />
-                              View Details
-                            </Button>
-                          </>
-                        )}
-                        {task.status === 'pending' && (
-                          <Button size="sm" className="gap-2">
-                            Continue Task
-                          </Button>
-                        )}
-                        {task.status === 'rejected' && (
-                          <Button size="sm" variant="outline">
-                            Retry Task
-                          </Button>
-                        )}
-                        {task.status === 'completed' && (
-                          <Button variant="outline" size="sm" className="gap-2">
-                            <Eye className="h-4 w-4" />
-                            View Certificate
-                          </Button>
-                        )}
-                      </div>
+                      {task.submitted_code && (
+                        <div className="p-3 bg-muted rounded-lg">
+                          <p className="text-sm text-muted-foreground mb-1">Submitted Code:</p>
+                          <p className="font-mono text-sm">{task.submitted_code}</p>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 );
               })}
               
-              {tasks.length === 0 && (
+              {statusTasks.length === 0 && (
                 <Card className="bg-card/50 backdrop-blur border-border/50">
                   <CardContent className="p-8 text-center">
                     <div className="text-muted-foreground">

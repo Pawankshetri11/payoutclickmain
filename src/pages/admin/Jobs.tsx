@@ -168,7 +168,7 @@ const Jobs = () => {
 
       if (error) throw error;
 
-      toast.success('Image job created successfully!');
+      toast.success('Job created successfully!');
 
       setNewJobModalOpen(false);
       setNewJobData({

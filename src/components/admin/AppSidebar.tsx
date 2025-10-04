@@ -17,6 +17,7 @@ import {
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 import {
   Sidebar,
@@ -103,11 +104,18 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
   const navigate = useNavigate();
+  const { signOut } = useAuth();
 
-  const handleLogout = () => {
-    localStorage.removeItem('is_admin');
-    toast.success('Logged out successfully');
-    navigate('/admin/login');
+  const handleLogout = async () => {
+    try {
+      localStorage.removeItem('is_admin');
+      await signOut();
+      toast.success('Logged out successfully');
+      navigate('/admin/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Failed to logout');
+    }
   };
 
   const isActive = (path: string) => {

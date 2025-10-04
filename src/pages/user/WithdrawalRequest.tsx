@@ -14,15 +14,18 @@ import {
   CheckCircle,
   DollarSign,
   Clock,
+  ShieldAlert,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useReferral } from "@/hooks/useReferral";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { WithdrawalNotification } from "@/components/WithdrawalNotification";
+import { useNavigate } from "react-router-dom";
 
 export default function WithdrawalRequest() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { processReferralCommission } = useReferral();
   const [withdrawalForm, setWithdrawalForm] = useState({
     amount: "",
@@ -31,25 +34,27 @@ export default function WithdrawalRequest() {
   });
 
   const [currentBalance, setCurrentBalance] = useState(0);
+  const [kycStatus, setKycStatus] = useState<string>("");
 
   useEffect(() => {
-    fetchUserBalance();
+    fetchUserData();
   }, [user]);
 
-  const fetchUserBalance = async () => {
+  const fetchUserData = async () => {
     if (!user) return;
     
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('balance')
-        .eq('id', user.id)
+        .select('balance, kyc_status')
+        .eq('user_id', user.id)
         .maybeSingle();
 
       if (error) throw error;
       setCurrentBalance(data?.balance || 0);
+      setKycStatus(data?.kyc_status || 'pending');
     } catch (error: any) {
-      console.error('Error fetching balance:', error);
+      console.error('Error fetching user data:', error);
     }
   };
   const minWithdrawal = 100;
@@ -116,6 +121,17 @@ export default function WithdrawalRequest() {
   };
 
   const handleSubmitWithdrawal = async () => {
+    // Check KYC status first
+    if (kycStatus !== 'verified') {
+      toast.error("Please complete KYC verification to withdraw funds", {
+        action: {
+          label: "Complete KYC",
+          onClick: () => navigate("/user/complete-kyc")
+        }
+      });
+      return;
+    }
+
     const amount = parseFloat(withdrawalForm.amount);
     
     if (!amount || amount < minWithdrawal || amount > maxWithdrawal) {
@@ -200,6 +216,23 @@ export default function WithdrawalRequest() {
           Request a withdrawal from your earnings
         </p>
       </div>
+
+      {/* KYC Warning */}
+      {kycStatus !== 'verified' && (
+        <Alert className="mb-6 border-warning bg-warning/10">
+          <ShieldAlert className="h-4 w-4 text-warning" />
+          <AlertDescription className="text-warning">
+            <strong>KYC Verification Required!</strong> You must complete KYC verification before you can withdraw funds.
+            <Button 
+              variant="link" 
+              className="p-0 h-auto ml-2 text-warning hover:text-warning/80"
+              onClick={() => navigate("/user/complete-kyc")}
+            >
+              Complete KYC Now →
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Withdrawal Notification */}
       <WithdrawalNotification />

@@ -13,12 +13,13 @@ import {
 } from "@/components/ui/dialog";
 import { User, Mail, Phone, Shield, DollarSign, Calendar } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface UserEditModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   user: any;
-  onUserUpdate?: (updatedUser: any) => void;
+  onUserUpdate?: () => void;
 }
 
 export function UserEditModal({ open, onOpenChange, user, onUserUpdate }: UserEditModalProps) {
@@ -46,19 +47,24 @@ export function UserEditModal({ open, onOpenChange, user, onUserUpdate }: UserEd
 
   const handleSaveChanges = async () => {
     try {
-      // Mock update - in real app would update in database
-      const updatedUser = {
-        ...user,
-        ...editForm,
-      };
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          name: editForm.name,
+          email: editForm.email,
+          phone: editForm.phone,
+          status: editForm.status as 'active' | 'pending' | 'suspended',
+          kyc_status: editForm.kyc as 'pending' | 'verified' | 'rejected',
+          balance: parseFloat(editForm.balance) || 0,
+        })
+        .eq('user_id', user.user_id);
 
-      console.log("Updating user:", updatedUser);
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (error) throw error;
       
       toast.success("User updated successfully!");
-      onUserUpdate?.(updatedUser);
+      if (onUserUpdate) {
+        onUserUpdate();
+      }
       onOpenChange(false);
     } catch (error: any) {
       console.error("Error updating user:", error);

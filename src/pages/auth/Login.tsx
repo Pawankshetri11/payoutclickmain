@@ -5,24 +5,67 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Eye, EyeOff, Chrome, Users, Info } from "lucide-react";
+import { Eye, EyeOff, Chrome, Users, Info, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState("user@payoutclick.com");
-  const [password, setPassword] = useState("user123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = () => {
-    // Check dummy credentials
-    if (email === "user@payoutclick.com" && password === "user123") {
-      localStorage.setItem('is_logged_in', 'true');
-      toast.success("Login successful! Welcome to PayoutClick");
-      navigate("/user");
-    } else {
-      toast.error("Invalid credentials! Use the demo credentials below.");
+  const handleLogin = async () => {
+    if (!email || !password) {
+      toast.error("Please enter email and password");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Sign in with Supabase
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        // Fetch user profile to check status
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('status, kyc_status')
+          .eq('user_id', data.user.id)
+          .maybeSingle();
+
+        if (profileError) {
+          console.error('Error fetching profile:', profileError);
+        }
+
+        // Check if user is banned/suspended
+        if (profile?.status === 'suspended') {
+          await supabase.auth.signOut();
+          toast.error("Your account has been suspended. Please contact support.");
+          return;
+        }
+
+        toast.success("Login successful! Welcome to PayoutClick");
+        
+        // Redirect based on KYC status
+        if (!profile || profile.kyc_status === 'pending' || !profile.kyc_status) {
+          navigate("/user/complete-kyc");
+        } else {
+          navigate("/user");
+        }
+      }
+    } catch (error: any) {
+      console.error("Login error:", error);
+      toast.error(error.message || "Invalid credentials");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -96,9 +139,10 @@ export default function Login() {
             </div>
             <Button 
               onClick={handleLogin} 
+              disabled={loading}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white"
             >
-              Sign In
+              {loading ? "Signing in..." : "Sign In"}
             </Button>
           </div>
 

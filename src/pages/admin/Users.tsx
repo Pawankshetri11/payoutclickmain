@@ -25,17 +25,86 @@ import {
   DollarSign,
   Ban,
   Eye,
-  Edit
+  Edit,
+  LogIn,
+  Plus,
+  Minus
 } from "lucide-react";
 import { KYCDetailsModal } from "@/components/admin/KYCDetailsModal";
 import { UserEditModal } from "./UserEditModal";
+import { AddUserModal } from "@/components/admin/AddUserModal";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const Users = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [kycModalOpen, setKycModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const { users, loading, updateUserStatus, updateKYCStatus } = useUsers();
+  const [addUserModalOpen, setAddUserModalOpen] = useState(false);
+  const [balanceModalOpen, setBalanceModalOpen] = useState(false);
+  const [balanceAmount, setBalanceAmount] = useState("");
+  const [balanceAction, setBalanceAction] = useState<'add' | 'remove'>('add');
+  const { users, loading, updateUserStatus, updateKYCStatus, refetch } = useUsers();
+
+  const handleLoginAsUser = async (userId: string) => {
+    try {
+      // Store admin session
+      const currentSession = await supabase.auth.getSession();
+      if (currentSession.data.session) {
+        localStorage.setItem('admin_session', JSON.stringify(currentSession.data.session));
+      }
+
+      // Sign out current admin
+      await supabase.auth.signOut();
+
+      toast.success("Logging in as user...");
+      
+      // In production, you'd need proper session switching
+      // For now, just notify
+      toast.info("User impersonation feature - Sign in as the user to test their account");
+    } catch (error: any) {
+      console.error("Error switching user:", error);
+      toast.error("Failed to switch user");
+    }
+  };
+
+  const handleBalanceUpdate = async () => {
+    if (!selectedUser || !balanceAmount) {
+      toast.error("Please enter an amount");
+      return;
+    }
+
+    const amount = parseFloat(balanceAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+
+    try {
+      const currentBalance = selectedUser.balance || 0;
+      const newBalance = balanceAction === 'add' 
+        ? currentBalance + amount 
+        : Math.max(0, currentBalance - amount);
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({ balance: newBalance })
+        .eq('user_id', selectedUser.user_id);
+
+      if (error) throw error;
+
+      toast.success(`Balance ${balanceAction === 'add' ? 'added' : 'removed'} successfully!`);
+      setBalanceModalOpen(false);
+      setBalanceAmount("");
+      refetch();
+    } catch (error: any) {
+      console.error("Error updating balance:", error);
+      toast.error("Failed to update balance");
+    }
+  };
 
   // Calculate stats from real data
   const stats = {
@@ -82,7 +151,10 @@ const Users = () => {
           </h1>
           <p className="text-muted-foreground">Manage all users and their account statuses</p>
         </div>
-        <Button className="bg-gradient-primary hover:opacity-90 shadow-glow">
+        <Button 
+          className="bg-gradient-primary hover:opacity-90 shadow-glow"
+          onClick={() => setAddUserModalOpen(true)}
+        >
           <UserPlus className="h-4 w-4 mr-2" />
           Add User
         </Button>
@@ -227,7 +299,7 @@ const Users = () => {
                           {new Date(user.created_at).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 flex-wrap">
                             <Button 
                               variant="ghost" 
                               size="sm"
@@ -237,7 +309,7 @@ const Users = () => {
                               }}
                             >
                               <Eye className="h-4 w-4 mr-1" />
-                              View KYC
+                              KYC
                             </Button>
                             <Button 
                               variant="ghost" 
@@ -249,6 +321,38 @@ const Users = () => {
                             >
                               <Edit className="h-4 w-4 mr-1" />
                               Edit
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleLoginAsUser(user.user_id)}
+                            >
+                              <LogIn className="h-4 w-4 mr-1" />
+                              Login
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => {
+                                setSelectedUser(user);
+                                setBalanceAction('add');
+                                setBalanceModalOpen(true);
+                              }}
+                            >
+                              <Plus className="h-4 w-4 mr-1" />
+                              Add
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => {
+                                setSelectedUser(user);
+                                setBalanceAction('remove');
+                                setBalanceModalOpen(true);
+                              }}
+                            >
+                              <Minus className="h-4 w-4 mr-1" />
+                              Remove
                             </Button>
                           </div>
                         </TableCell>
@@ -280,8 +384,60 @@ const Users = () => {
           onUserUpdate={() => {
             setEditModalOpen(false);
             setSelectedUser(null);
+            refetch();
           }}
         />
+      )}
+
+      {/* Add User Modal */}
+      <AddUserModal 
+        open={addUserModalOpen}
+        onOpenChange={setAddUserModalOpen}
+        onUserAdded={refetch}
+      />
+
+      {/* Balance Update Modal */}
+      {selectedUser && balanceModalOpen && (
+        <Dialog open={balanceModalOpen} onOpenChange={setBalanceModalOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5" />
+                {balanceAction === 'add' ? 'Add' : 'Remove'} Balance
+              </DialogTitle>
+              <DialogDescription>
+                {balanceAction === 'add' ? 'Add' : 'Remove'} balance for {selectedUser.name}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Current Balance</Label>
+                <div className="text-2xl font-bold">₹{selectedUser.balance || 0}</div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="amount">Amount (₹)</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  value={balanceAmount}
+                  onChange={(e) => setBalanceAmount(e.target.value)}
+                  placeholder="Enter amount"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={() => {
+                setBalanceModalOpen(false);
+                setBalanceAmount("");
+              }}>
+                Cancel
+              </Button>
+              <Button onClick={handleBalanceUpdate}>
+                {balanceAction === 'add' ? 'Add' : 'Remove'} Balance
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

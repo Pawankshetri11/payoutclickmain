@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,29 +9,50 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Camera, Mail, Phone, MapPin, Calendar, Edit, Shield, Award, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
+import { useProfile } from "@/hooks/useProfile";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Profile() {
+  const { user } = useAuth();
+  const { profile, loading, updateProfile } = useProfile();
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState({
-    firstName: "John",
-    lastName: "Doe",
-    email: "john.doe@example.com",
-    phone: "+1 (555) 123-4567",
-    location: "New York, NY",
-    joinDate: "January 2024",
-    bio: "Professional task completer with expertise in digital marketing and content creation."
+    name: "",
+    email: "",
+    phone: "",
+    bio: ""
   });
 
-  const handleSave = () => {
+  useEffect(() => {
+    if (profile) {
+      setProfileData({
+        name: profile.name || "",
+        email: profile.email || "",
+        phone: profile.phone || "",
+        bio: ""
+      });
+    }
+  }, [profile]);
+
+  const handleSave = async () => {
+    await updateProfile({
+      name: profileData.name,
+      phone: profileData.phone
+    });
     setIsEditing(false);
-    toast.success("Profile updated successfully");
   };
 
+  if (loading) {
+    return <div className="flex items-center justify-center h-screen">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    </div>;
+  }
+
   const stats = [
-    { label: "Tasks Completed", value: "1,247", icon: Award, color: "text-green-600" },
-    { label: "Total Earnings", value: "$2,850", icon: TrendingUp, color: "text-blue-600" },
-    { label: "Success Rate", value: "98.5%", icon: Shield, color: "text-purple-600" },
-    { label: "Member Since", value: "8 months", icon: Calendar, color: "text-orange-600" }
+    { label: "Tasks Completed", value: profile?.completed_tasks || 0, icon: Award, color: "text-green-600" },
+    { label: "Total Earnings", value: `₹${profile?.total_earnings || 0}`, icon: TrendingUp, color: "text-blue-600" },
+    { label: "Current Balance", value: `₹${profile?.balance || 0}`, icon: Shield, color: "text-purple-600" },
+    { label: "Member Since", value: profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : "N/A", icon: Calendar, color: "text-orange-600" }
   ];
 
   return (
@@ -50,7 +71,7 @@ export default function Profile() {
                 <Avatar className="w-20 h-20 md:w-24 md:h-24">
                   <AvatarImage src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face" />
                   <AvatarFallback className="text-lg md:text-xl font-semibold">
-                    {profileData.firstName[0]}{profileData.lastName[0]}
+                    {profile?.name?.charAt(0) || "U"}
                   </AvatarFallback>
                 </Avatar>
                 <Button 
@@ -66,28 +87,28 @@ export default function Profile() {
                 <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-3">
                   <div>
                     <h2 className="text-xl md:text-2xl font-bold text-foreground">
-                      {profileData.firstName} {profileData.lastName}
+                      {profile?.name || "User"}
                     </h2>
-                    <p className="text-muted-foreground mt-1 text-sm md:text-base">{profileData.bio}</p>
+                    <p className="text-muted-foreground mt-1 text-sm md:text-base">{profileData.bio || "No bio yet"}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge className="bg-success/20 text-success border-success/30 text-xs">Verified</Badge>
-                    <Badge className="bg-primary/20 text-primary border-primary/30 text-xs">Premium</Badge>
+                    <Badge className="bg-success/20 text-success border-success/30 text-xs">
+                      {profile?.kyc_status === 'verified' ? 'Verified' : 'Unverified'}
+                    </Badge>
+                    <Badge className="bg-primary/20 text-primary border-primary/30 text-xs">
+                      {profile?.level || 'Basic'}
+                    </Badge>
                   </div>
                 </div>
                 
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6 mt-3 md:mt-4 text-xs md:text-sm text-muted-foreground">
                   <div className="flex items-center justify-center sm:justify-start">
                     <Mail className="h-3 w-3 md:h-4 md:w-4 mr-2 shrink-0" />
-                    <span className="truncate">{profileData.email}</span>
+                  <span className="truncate">{profileData.email}</span>
                   </div>
                   <div className="flex items-center justify-center sm:justify-start">
                     <Phone className="h-3 w-3 md:h-4 md:w-4 mr-2 shrink-0" />
-                    {profileData.phone}
-                  </div>
-                  <div className="flex items-center justify-center sm:justify-start">
-                    <MapPin className="h-3 w-3 md:h-4 md:w-4 mr-2 shrink-0" />
-                    {profileData.location}
+                    {profileData.phone || "N/A"}
                   </div>
                 </div>
               </div>
@@ -143,25 +164,14 @@ export default function Profile() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input 
-                      id="firstName" 
-                      value={profileData.firstName}
-                      disabled={!isEditing}
-                      onChange={(e) => setProfileData({...profileData, firstName: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input 
-                      id="lastName" 
-                      value={profileData.lastName}
-                      disabled={!isEditing}
-                      onChange={(e) => setProfileData({...profileData, lastName: e.target.value})}
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input 
+                    id="name" 
+                    value={profileData.name}
+                    disabled={!isEditing}
+                    onChange={(e) => setProfileData({...profileData, name: e.target.value})}
+                  />
                 </div>
                 
                 <div className="space-y-2">
@@ -170,9 +180,9 @@ export default function Profile() {
                     id="email" 
                     type="email"
                     value={profileData.email}
-                    disabled={!isEditing}
-                    onChange={(e) => setProfileData({...profileData, email: e.target.value})}
+                    disabled={true}
                   />
+                  <p className="text-xs text-muted-foreground">Email cannot be changed</p>
                 </div>
                 
                 <div className="space-y-2">
@@ -182,16 +192,6 @@ export default function Profile() {
                     value={profileData.phone}
                     disabled={!isEditing}
                     onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="location">Location</Label>
-                  <Input 
-                    id="location" 
-                    value={profileData.location}
-                    disabled={!isEditing}
-                    onChange={(e) => setProfileData({...profileData, location: e.target.value})}
                   />
                 </div>
                 

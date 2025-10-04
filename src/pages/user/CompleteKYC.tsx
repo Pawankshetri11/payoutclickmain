@@ -13,16 +13,63 @@ import { toast } from "sonner";
 export default function CompleteKYC() {
   const [currentStep, setCurrentStep] = useState(1);
   const [kycStatus, setKycStatus] = useState<"pending" | "verified" | "rejected">("pending");
+  const [formData, setFormData] = useState({
+    step1: { firstName: "", lastName: "", dob: "", gender: "", phone: "" },
+    step2: { docType: "", frontDoc: null, backDoc: null, selfie: null },
+    step3: { address: "", city: "", state: "", zip: "", country: "", proof: null },
+    step4: { accountHolder: "", accountNumber: "", routing: "", bankName: "", accountType: "" }
+  });
 
   const handleFileUpload = (type: string) => {
     // Dummy file upload
     toast.success(`${type} uploaded successfully`);
   };
 
+  const validateStep = (step: number) => {
+    switch(step) {
+      case 1:
+        const { firstName, lastName, dob, gender, phone } = formData.step1;
+        if (!firstName || !lastName || !dob || !gender || !phone) {
+          toast.error("Please fill all required fields in Personal Information");
+          return false;
+        }
+        break;
+      case 2:
+        const { docType, frontDoc, backDoc, selfie } = formData.step2;
+        if (!docType || !frontDoc || !backDoc || !selfie) {
+          toast.error("Please upload all required documents");
+          return false;
+        }
+        break;
+      case 3:
+        const { address, city, state, zip, country, proof } = formData.step3;
+        if (!address || !city || !state || !zip || !country || !proof) {
+          toast.error("Please fill all address fields and upload proof");
+          return false;
+        }
+        break;
+      case 4:
+        const { accountHolder, accountNumber, routing, bankName, accountType } = formData.step4;
+        if (!accountHolder || !accountNumber || !routing || !bankName || !accountType) {
+          toast.error("Please fill all bank details");
+          return false;
+        }
+        break;
+    }
+    return true;
+  };
+
+  const handleNext = () => {
+    if (validateStep(currentStep)) {
+      setCurrentStep(Math.min(4, currentStep + 1));
+    }
+  };
+
   const handleSubmit = () => {
-    // Dummy KYC submission
-    setKycStatus("pending");
-    toast.success("KYC documents submitted for verification");
+    if (validateStep(4)) {
+      setKycStatus("pending");
+      toast.success("KYC documents submitted for verification");
+    }
   };
 
   const steps = [
@@ -89,22 +136,40 @@ export default function CompleteKYC() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
-                  <Input id="firstName" placeholder="Enter first name" />
+                  <Label htmlFor="firstName">First Name *</Label>
+                  <Input 
+                    id="firstName" 
+                    placeholder="Enter first name" 
+                    value={formData.step1.firstName}
+                    onChange={(e) => setFormData({...formData, step1: {...formData.step1, firstName: e.target.value}})}
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
-                  <Input id="lastName" placeholder="Enter last name" />
+                  <Label htmlFor="lastName">Last Name *</Label>
+                  <Input 
+                    id="lastName" 
+                    placeholder="Enter last name"
+                    value={formData.step1.lastName}
+                    onChange={(e) => setFormData({...formData, step1: {...formData.step1, lastName: e.target.value}})}
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="dob">Date of Birth</Label>
-                  <Input id="dob" type="date" />
+                  <Label htmlFor="dob">Date of Birth *</Label>
+                  <Input 
+                    id="dob" 
+                    type="date"
+                    value={formData.step1.dob}
+                    onChange={(e) => setFormData({...formData, step1: {...formData.step1, dob: e.target.value}})}
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="gender">Gender</Label>
-                  <Select>
+                  <Label htmlFor="gender">Gender *</Label>
+                  <Select 
+                    value={formData.step1.gender}
+                    onValueChange={(value) => setFormData({...formData, step1: {...formData.step1, gender: value}})}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select gender" />
                     </SelectTrigger>
@@ -117,8 +182,13 @@ export default function CompleteKYC() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input id="phone" placeholder="Enter phone number" />
+                <Label htmlFor="phone">Phone Number *</Label>
+                <Input 
+                  id="phone" 
+                  placeholder="Enter phone number"
+                  value={formData.step1.phone}
+                  onChange={(e) => setFormData({...formData, step1: {...formData.step1, phone: e.target.value}})}
+                />
               </div>
             </CardContent>
           </Card>
@@ -304,7 +374,7 @@ export default function CompleteKYC() {
         
         {currentStep < 4 ? (
           <Button 
-            onClick={() => setCurrentStep(Math.min(4, currentStep + 1))}
+            onClick={handleNext}
             className="bg-blue-600 hover:bg-blue-700"
           >
             Next

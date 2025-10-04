@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { 
   Search, 
   Clock,
@@ -31,6 +31,7 @@ export default function Tasks() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("newest");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [allTasks, setAllTasks] = useState<any[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,15 +89,15 @@ export default function Tasks() {
   };
 
   // Filter and sort tasks
-  const getFilteredAndSortedTasks = (categoryId?: string) => {
+  const getFilteredAndSortedTasks = () => {
     let filtered = allTasks;
 
     // Filter by category
-    if (categoryId && categoryId !== 'all') {
-      if (categoryId === 'code' || categoryId === 'image') {
-        filtered = filtered.filter(t => t.type === categoryId);
+    if (categoryFilter && categoryFilter !== 'all') {
+      if (categoryFilter === 'code' || categoryFilter === 'image') {
+        filtered = filtered.filter(t => t.type === categoryFilter);
       } else {
-        filtered = filtered.filter(t => t.category.toLowerCase() === categoryId.toLowerCase());
+        filtered = filtered.filter(t => t.category.toLowerCase() === categoryFilter.toLowerCase());
       }
     }
 
@@ -130,16 +131,6 @@ export default function Tasks() {
     return filtered;
   };
 
-  // Build category tabs
-  const categoryTabs = [
-    { id: "all", name: "All Tasks", icon: null },
-    ...categories.map(cat => ({
-      id: cat.id,
-      name: cat.name,
-      icon: Folder
-    }))
-  ];
-
   return (
     <div className="p-3 md:p-6 space-y-4 md:space-y-6">
       {/* Header */}
@@ -149,7 +140,7 @@ export default function Tasks() {
           <p className="text-muted-foreground mt-1 text-sm md:text-base">Choose and start earning</p>
         </div>
 
-        {/* Search and Sort */}
+        {/* Search, Category Filter, and Sort */}
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -160,6 +151,19 @@ export default function Tasks() {
               className="pl-10 text-sm"
             />
           </div>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-full sm:w-[180px] text-sm">
+              <SelectValue placeholder="All Categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {categories.map((category) => (
+                <SelectItem key={category.id} value={category.id}>
+                  {category.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="w-full sm:w-[180px] text-sm">
               <SelectValue placeholder="Sort by" />
@@ -174,92 +178,77 @@ export default function Tasks() {
         </div>
       </div>
 
-      {/* Categories Tabs */}
-      <Tabs defaultValue="all" className="w-full">
-        <div className="overflow-x-auto pb-2">
-          <TabsList className="inline-flex w-auto min-w-full">
-            {categoryTabs.map((category) => (
-              <TabsTrigger key={category.id} value={category.id} className="flex items-center gap-1 md:gap-2 text-xs md:text-sm whitespace-nowrap">
-                {category.icon && <category.icon className="h-3 w-3 md:h-4 md:w-4" />}
-                <span>{category.name}</span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
+      {/* Tasks Grid */}
+      {loading ? (
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading tasks...</p>
         </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+            {getFilteredAndSortedTasks().map((task) => (
+              <Card key={task.id} className="bg-card/50 backdrop-blur border-border/50 hover:shadow-lg transition-all duration-200 flex flex-col">
+                <CardHeader className="p-4 md:p-6">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-2 md:gap-3 flex-1 min-w-0">
+                      <div className="p-1.5 md:p-2 rounded-lg bg-primary/10 shrink-0">
+                        <task.icon className="h-4 w-4 md:h-5 md:w-5 text-primary" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <CardTitle className="text-base md:text-lg line-clamp-2">{task.title}</CardTitle>
+                        <CardDescription className="mt-1 text-xs md:text-sm line-clamp-2">{task.description}</CardDescription>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-left mt-3">
+                    <div className="text-xl md:text-2xl font-bold text-success">₹{task.reward}</div>
+                    <div className="text-xs text-muted-foreground">per task</div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3 md:space-y-4 p-4 md:p-6 pt-0 flex-1 flex flex-col">
+                  {/* Task Details */}
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="outline" className="flex items-center gap-1">
+                      {task.type === "code" ? <Code className="h-3 w-3" /> : <ImageIcon className="h-3 w-3" />}
+                      {task.type === "code" ? "Auto-verify" : "Manual approval"}
+                    </Badge>
+                    <Badge variant="outline" className="flex items-center gap-1">
+                      <Users className="h-3 w-3" />
+                      {task.vacancies} left
+                    </Badge>
+                  </div>
 
-        {categoryTabs.map((category) => (
-          <TabsContent key={category.id} value={category.id} className="mt-4 md:mt-6">
-            {loading ? (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-                <p className="text-muted-foreground">Loading tasks...</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                {getFilteredAndSortedTasks(category.id).map((task) => (
-                  <Card key={task.id} className="bg-card/50 backdrop-blur border-border/50 hover:shadow-lg transition-all duration-200 flex flex-col">
-                    <CardHeader className="p-4 md:p-6">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-start gap-2 md:gap-3 flex-1 min-w-0">
-                          <div className="p-1.5 md:p-2 rounded-lg bg-primary/10 shrink-0">
-                            <task.icon className="h-4 w-4 md:h-5 md:w-5 text-primary" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <CardTitle className="text-base md:text-lg line-clamp-2">{task.title}</CardTitle>
-                            <CardDescription className="mt-1 text-xs md:text-sm line-clamp-2">{task.description}</CardDescription>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-left mt-3">
-                        <div className="text-xl md:text-2xl font-bold text-success">₹{task.reward}</div>
-                        <div className="text-xs text-muted-foreground">per task</div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3 md:space-y-4 p-4 md:p-6 pt-0 flex-1 flex flex-col">
-                      {/* Task Details */}
-                      <div className="flex flex-wrap gap-2">
-                        <Badge variant="outline" className="flex items-center gap-1">
-                          {task.type === "code" ? <Code className="h-3 w-3" /> : <ImageIcon className="h-3 w-3" />}
-                          {task.type === "code" ? "Auto-verify" : "Manual approval"}
-                        </Badge>
-                        <Badge variant="outline" className="flex items-center gap-1">
-                          <Users className="h-3 w-3" />
-                          {task.vacancies} left
-                        </Badge>
-                      </div>
-
-                      {/* Footer */}
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-3 md:pt-4 border-t border-border/50 mt-auto">
-                        <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground">
-                          <Users className="h-3 w-3 md:h-4 md:w-4" />
-                          {task.participants} completed
-                        </div>
-                        <div className="flex gap-2 w-full sm:w-auto">
-                          <Button variant="outline" size="sm" onClick={() => navigate(`/user/jobs/${task.id}`)} className="flex-1 sm:flex-none text-xs md:text-sm">
-                            Details
-                          </Button>
-                          <Button size="sm" onClick={() => handleStartTask(task)} className="gap-1 md:gap-2 flex-1 sm:flex-none text-xs md:text-sm">
-                            Start Task
-                            <ArrowRight className="h-3 w-3 md:h-4 md:w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-
-            {!loading && getFilteredAndSortedTasks(category.id).length === 0 && (
-              <Card className="bg-card/50 backdrop-blur border-border/50">
-                <CardContent className="p-8 text-center">
-                  <p className="text-muted-foreground">No tasks found in this category.</p>
+                  {/* Footer */}
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-3 md:pt-4 border-t border-border/50 mt-auto">
+                    <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground">
+                      <Users className="h-3 w-3 md:h-4 md:w-4" />
+                      {task.participants} completed
+                    </div>
+                    <div className="flex gap-2 w-full sm:w-auto">
+                      <Button variant="outline" size="sm" onClick={() => navigate(`/user/jobs/${task.id}`)} className="flex-1 sm:flex-none text-xs md:text-sm">
+                        Details
+                      </Button>
+                      <Button size="sm" onClick={() => handleStartTask(task)} className="gap-1 md:gap-2 flex-1 sm:flex-none text-xs md:text-sm">
+                        Start Task
+                        <ArrowRight className="h-3 w-3 md:h-4 md:w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
-            )}
-          </TabsContent>
-        ))}
-      </Tabs>
+            ))}
+          </div>
+
+          {getFilteredAndSortedTasks().length === 0 && (
+            <Card className="bg-card/50 backdrop-blur border-border/50">
+              <CardContent className="p-8 text-center">
+                <p className="text-muted-foreground">No tasks found matching your filters.</p>
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
     </div>
   );
 }

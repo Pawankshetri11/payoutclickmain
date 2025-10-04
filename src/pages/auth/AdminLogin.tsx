@@ -7,26 +7,78 @@ import { Separator } from "@/components/ui/separator";
 import { Eye, EyeOff, Chrome, Shield } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function AdminLogin() {
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState("admin@payoutclick.com");
-  const [password, setPassword] = useState("admin123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = () => {
-    if (email === "admin@payoutclick.com" && password === "admin123") {
-      localStorage.setItem("is_admin", "true");
-      toast.success("Logged in as admin");
-      navigate("/admin");
-    } else {
-      toast.error("Invalid admin credentials");
+  const handleLogin = async () => {
+    if (!email || !password) {
+      toast.error("Please enter email and password");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Sign in with Supabase
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        // Check if user is admin - using type assertion for user_roles table
+        try {
+          const { data: roleData } = await (supabase as any)
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', data.user.id)
+            .eq('role', 'admin')
+            .maybeSingle();
+
+          if (!roleData) {
+            await supabase.auth.signOut();
+            toast.error("Access denied. Admin privileges required.");
+            return;
+          }
+
+          toast.success("Admin login successful!");
+          navigate("/admin");
+        } catch (roleError) {
+          console.error('Error checking admin role:', roleError);
+          await supabase.auth.signOut();
+          toast.error("Unable to verify admin status. Please try again.");
+          return;
+        }
+      }
+    } catch (error: any) {
+      console.error("Admin login error:", error);
+      toast.error(error.message || "Invalid credentials");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleGoogleLogin = () => {
-    // Dummy Google login for admin
-    handleLogin();
+  const handleGoogleLogin = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/admin`
+        }
+      });
+
+      if (error) throw error;
+    } catch (error: any) {
+      console.error("Google login error:", error);
+      toast.error(error.message || "Failed to sign in with Google");
+    }
   };
 
   return (
@@ -48,23 +100,24 @@ export default function AdminLogin() {
               <Input 
                 id="admin-email" 
                 type="email" 
-                placeholder="admin@payoutclick.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                placeholder="admin@payoutclick.io"
                 className="border-gray-300 focus:border-red-500"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="admin-password" className="text-gray-700">Password</Label>
               <div className="relative">
-                 <Input 
-                   id="admin-password" 
-                   type={showPassword ? "text" : "password"}
-                   placeholder="admin123"
-                   value={password}
-                   onChange={(e) => setPassword(e.target.value)}
-                   className="border-gray-300 focus:border-red-500 pr-10"
-                 />
+                <Input 
+                  id="admin-password" 
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter admin password"
+                  className="border-gray-300 focus:border-red-500 pr-10"
+                  onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                />
                 <Button
                   type="button"
                   variant="ghost"
@@ -82,9 +135,10 @@ export default function AdminLogin() {
             </div>
             <Button 
               onClick={handleLogin} 
+              disabled={loading}
               className="w-full bg-red-600 hover:bg-red-700 text-white"
             >
-              Sign In as Admin
+              {loading ? "Signing in..." : "Sign In as Admin"}
             </Button>
           </div>
 
@@ -100,30 +154,25 @@ export default function AdminLogin() {
           <Button 
             variant="outline" 
             onClick={handleGoogleLogin}
+            disabled={loading}
             className="w-full mt-4 border-gray-300 text-gray-700 hover:bg-gray-50"
           >
             <Chrome className="mr-2 h-4 w-4" />
             Continue with Google
-           </Button>
+          </Button>
 
-           <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-             <p className="text-sm text-amber-800 font-medium">Default Admin Credentials:</p>
-             <p className="text-xs text-amber-700 mt-1">Email: admin@payoutclick.com</p>
-             <p className="text-xs text-amber-700">Password: admin123</p>
-           </div>
-
-           <div className="text-center mt-6">
-             <p className="text-sm text-gray-600">
-               Need user access?{" "}
-                <Button 
-                  variant="link" 
-                  onClick={() => navigate("/auth")}
-                  className="p-0 h-auto font-medium text-blue-600 hover:text-blue-800"
-                >
-                  User Login
-                </Button>
-             </p>
-           </div>
+          <div className="text-center mt-6">
+            <p className="text-sm text-gray-600">
+              Need user access?{" "}
+              <Button 
+                variant="link" 
+                onClick={() => navigate("/login")}
+                className="p-0 h-auto font-medium text-blue-600 hover:text-blue-800"
+              >
+                User Login
+              </Button>
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>

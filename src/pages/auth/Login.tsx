@@ -69,11 +69,20 @@ export default function Login() {
     }
   };
 
-  const handleGoogleLogin = () => {
-    // Dummy Google login for user
-    localStorage.setItem('is_logged_in', 'true');
-    toast.success("Login successful! Welcome to PayoutClick");
-    navigate("/user");
+  const handleGoogleLogin = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/user`
+        }
+      });
+
+      if (error) throw error;
+    } catch (error: any) {
+      console.error("Google login error:", error);
+      toast.error(error.message || "Failed to sign in with Google");
+    }
   };
 
   return (
@@ -89,16 +98,6 @@ export default function Login() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Demo Credentials Alert */}
-          <Alert className="mb-4 border-blue-200 bg-blue-50">
-            <Info className="h-4 w-4 text-blue-600" />
-            <AlertDescription className="text-blue-800">
-              <strong>Demo User Credentials:</strong><br/>
-              Email: user@payoutclick.com<br/>
-              Password: user123
-            </AlertDescription>
-          </Alert>
-
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="user-email" className="text-gray-700">Email</Label>
@@ -119,9 +118,10 @@ export default function Login() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  className="border-gray-300 focus:border-blue-500 pr-10"
-                />
+                placeholder="Enter your password"
+                className="border-gray-300 focus:border-blue-500 pr-10"
+                onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+              />
                 <Button
                   type="button"
                   variant="ghost"
@@ -158,6 +158,7 @@ export default function Login() {
           <Button 
             variant="outline" 
             onClick={handleGoogleLogin}
+            disabled={loading}
             className="w-full mt-4 border-gray-300 text-gray-700 hover:bg-gray-50"
           >
             <Chrome className="mr-2 h-4 w-4" />

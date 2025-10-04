@@ -4,28 +4,92 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Eye, EyeOff, Chrome, User, Shield } from "lucide-react";
+import { Eye, EyeOff, Chrome, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [userType, setUserType] = useState<"user" | "admin">("user");
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    password: "",
+    confirmPassword: "",
+    agreedToTerms: false
+  });
   const navigate = useNavigate();
 
-  const handleSignup = (type: "user" | "admin") => {
-    // Dummy signup - redirect to respective dashboard
-    if (type === "admin") {
-      navigate("/admin");
-    } else {
-      navigate("/user");
+  const handleSignup = async () => {
+    // Validate form
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
+      toast.error("Please fill all required fields");
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+
+    if (!formData.agreedToTerms) {
+      toast.error("Please agree to the Terms of Service");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Create user account
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            name: `${formData.firstName} ${formData.lastName}`,
+            phone: formData.phone
+          },
+          emailRedirectTo: `${window.location.origin}/user`
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        toast.success("Account created! Please check your email to verify.");
+        navigate("/login");
+      }
+    } catch (error: any) {
+      console.error("Signup error:", error);
+      toast.error(error.message || "Failed to create account");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleGoogleSignup = (type: "user" | "admin") => {
-    // Dummy Google signup
-    handleSignup(type);
+  const handleGoogleSignup = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/user`
+        }
+      });
+
+      if (error) throw error;
+    } catch (error: any) {
+      console.error("Google signup error:", error);
+      toast.error(error.message || "Failed to sign up with Google");
+    }
   };
 
   return (
@@ -38,51 +102,38 @@ export default function Signup() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-2 mb-6">
-            <Button
-              variant={userType === "user" ? "default" : "outline"}
-              onClick={() => setUserType("user")}
-              className="flex-1"
-            >
-              <User className="mr-2 h-4 w-4" />
-              User
-            </Button>
-            <Button
-              variant={userType === "admin" ? "default" : "outline"}
-              onClick={() => setUserType("admin")}
-              className="flex-1"
-            >
-              <Shield className="mr-2 h-4 w-4" />
-              Admin
-            </Button>
-          </div>
-
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="firstName" className="text-gray-700">First Name</Label>
+                <Label htmlFor="firstName" className="text-gray-700">First Name *</Label>
                 <Input 
                   id="firstName" 
                   placeholder="John"
+                  value={formData.firstName}
+                  onChange={(e) => setFormData({...formData, firstName: e.target.value})}
                   className="border-gray-300 focus:border-green-500"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lastName" className="text-gray-700">Last Name</Label>
+                <Label htmlFor="lastName" className="text-gray-700">Last Name *</Label>
                 <Input 
                   id="lastName" 
                   placeholder="Doe"
+                  value={formData.lastName}
+                  onChange={(e) => setFormData({...formData, lastName: e.target.value})}
                   className="border-gray-300 focus:border-green-500"
                 />
               </div>
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-gray-700">Email</Label>
+              <Label htmlFor="email" className="text-gray-700">Email *</Label>
               <Input 
                 id="email" 
                 type="email" 
                 placeholder="Enter your email"
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
                 className="border-gray-300 focus:border-green-500"
               />
             </div>
@@ -93,17 +144,21 @@ export default function Signup() {
                 id="phone" 
                 type="tel" 
                 placeholder="+1 (555) 000-0000"
+                value={formData.phone}
+                onChange={(e) => setFormData({...formData, phone: e.target.value})}
                 className="border-gray-300 focus:border-green-500"
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-gray-700">Password</Label>
+              <Label htmlFor="password" className="text-gray-700">Password *</Label>
               <div className="relative">
                 <Input 
                   id="password" 
                   type={showPassword ? "text" : "password"}
-                  placeholder="Create a password"
+                  placeholder="Create a password (min 6 characters)"
+                  value={formData.password}
+                  onChange={(e) => setFormData({...formData, password: e.target.value})}
                   className="border-gray-300 focus:border-green-500 pr-10"
                 />
                 <Button
@@ -123,12 +178,14 @@ export default function Signup() {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-gray-700">Confirm Password</Label>
+              <Label htmlFor="confirmPassword" className="text-gray-700">Confirm Password *</Label>
               <div className="relative">
                 <Input 
                   id="confirmPassword" 
                   type={showConfirmPassword ? "text" : "password"}
                   placeholder="Confirm your password"
+                  value={formData.confirmPassword}
+                  onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
                   className="border-gray-300 focus:border-green-500 pr-10"
                 />
                 <Button
@@ -148,24 +205,25 @@ export default function Signup() {
             </div>
 
             <div className="flex items-center space-x-2">
-              <Checkbox id="terms" />
+              <Checkbox 
+                id="terms" 
+                checked={formData.agreedToTerms}
+                onCheckedChange={(checked) => setFormData({...formData, agreedToTerms: checked as boolean})}
+              />
               <Label 
                 htmlFor="terms" 
                 className="text-sm text-gray-600 cursor-pointer"
               >
-                I agree to the Terms of Service and Privacy Policy
+                I agree to the Terms of Service and Privacy Policy *
               </Label>
             </div>
 
             <Button 
-              onClick={() => handleSignup(userType)} 
-              className={`w-full ${
-                userType === "admin" 
-                  ? "bg-red-600 hover:bg-red-700" 
-                  : "bg-green-600 hover:bg-green-700"
-              } text-white`}
+              onClick={handleSignup} 
+              disabled={loading}
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
             >
-              Create {userType === "admin" ? "Admin" : "User"} Account
+              {loading ? "Creating Account..." : "Create Account"}
             </Button>
           </div>
 
@@ -180,7 +238,8 @@ export default function Signup() {
 
           <Button 
             variant="outline" 
-            onClick={() => handleGoogleSignup(userType)}
+            onClick={handleGoogleSignup}
+            disabled={loading}
             className="w-full mt-4 border-gray-300 text-gray-700 hover:bg-gray-50"
           >
             <Chrome className="mr-2 h-4 w-4" />

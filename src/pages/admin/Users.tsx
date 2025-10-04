@@ -248,29 +248,6 @@ const Users = () => {
                     ))
                   )}
                 </TableBody>
-                              setSelectedUser(user);
-                              setKycModalOpen(true);
-                            }}
-                          >
-                            <Eye className="h-4 w-4 mr-1" />
-                            KYC
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => {
-                              setSelectedUser(user);
-                              setEditModalOpen(true);
-                            }}
-                          >
-                            <Edit className="h-4 w-4 mr-1" />
-                            Edit
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
               </Table>
             </TabsContent>
           </Tabs>

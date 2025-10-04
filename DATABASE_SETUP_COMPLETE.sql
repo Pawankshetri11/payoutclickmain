@@ -40,9 +40,9 @@ CREATE POLICY "Admins can manage all roles"
   ON public.user_roles FOR ALL
   USING (public.is_admin(auth.uid()));
 
--- Drop existing functions if they exist
-DROP FUNCTION IF EXISTS public.is_admin(uuid);
-DROP FUNCTION IF EXISTS public.has_role(uuid, app_role);
+-- Drop existing functions if they exist (CASCADE to drop dependent policies)
+DROP FUNCTION IF EXISTS public.is_admin(uuid) CASCADE;
+DROP FUNCTION IF EXISTS public.has_role(uuid, app_role) CASCADE;
 
 -- Create security definer function to check admin role
 CREATE FUNCTION public.is_admin(user_id UUID)

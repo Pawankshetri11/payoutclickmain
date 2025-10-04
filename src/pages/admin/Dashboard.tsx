@@ -2,7 +2,6 @@ import { StatCard } from "@/components/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import heroImage from "@/assets/admin-hero.jpg";
 import {
   Users,
   Briefcase,
@@ -17,26 +16,7 @@ import {
 
 const Dashboard = () => {
   return (
-    <div className="min-h-screen">
-      {/* Hero Section */}
-      <div 
-        className="relative h-64 bg-cover bg-center bg-no-repeat border-b border-border/20"
-        style={{ backgroundImage: `url(${heroImage})` }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-r from-background/95 via-background/80 to-background/95" />
-        <div className="relative h-full flex items-center justify-center">
-          <div className="text-center space-y-4">
-            <h1 className="text-4xl md:text-5xl font-bold text-foreground">
-              PayoutClick Admin
-            </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl">
-              Complete payout management system for users, jobs, payments and more
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="p-6 space-y-6">
+    <div className="min-h-screen p-6 space-y-6">
         {/* Page Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -231,7 +211,6 @@ const Dashboard = () => {
             </div>
           </CardContent>
         </Card>
-      </div>
       </div>
     </div>
   );

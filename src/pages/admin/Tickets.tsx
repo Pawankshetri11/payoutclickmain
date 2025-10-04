@@ -100,7 +100,9 @@ const Tickets = () => {
               <Clock className="h-5 w-5 text-warning" />
               <div>
                 <p className="text-sm text-muted-foreground">Pending Tickets</p>
-                <p className="text-xl font-bold text-warning">23</p>
+                <p className="text-xl font-bold text-warning">
+                  {tickets.filter(t => t.status === 'pending').length}
+                </p>
                 <p className="text-xs text-muted-foreground">Awaiting response</p>
               </div>
             </div>
@@ -112,9 +114,11 @@ const Tickets = () => {
             <div className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-info" />
               <div>
-                <p className="text-sm text-muted-foreground">Answered Today</p>
-                <p className="text-xl font-bold text-info">47</p>
-                <p className="text-xs text-muted-foreground">Avg response: 2.3h</p>
+                <p className="text-sm text-muted-foreground">Answered</p>
+                <p className="text-xl font-bold text-info">
+                  {tickets.filter(t => t.status === 'answered').length}
+                </p>
+                <p className="text-xs text-muted-foreground">Total answered</p>
               </div>
             </div>
           </CardContent>
@@ -125,9 +129,11 @@ const Tickets = () => {
             <div className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-success" />
               <div>
-                <p className="text-sm text-muted-foreground">Closed This Week</p>
-                <p className="text-xl font-bold text-success">156</p>
-                <p className="text-xs text-muted-foreground">95% satisfaction</p>
+                <p className="text-sm text-muted-foreground">Closed</p>
+                <p className="text-xl font-bold text-success">
+                  {tickets.filter(t => t.status === 'closed').length}
+                </p>
+                <p className="text-xs text-muted-foreground">Total closed</p>
               </div>
             </div>
           </CardContent>
@@ -139,7 +145,9 @@ const Tickets = () => {
               <AlertTriangle className="h-5 w-5 text-destructive" />
               <div>
                 <p className="text-sm text-muted-foreground">High Priority</p>
-                <p className="text-xl font-bold text-destructive">5</p>
+                <p className="text-xl font-bold text-destructive">
+                  {tickets.filter(t => t.priority === 'high').length}
+                </p>
                 <p className="text-xs text-muted-foreground">Requires attention</p>
               </div>
             </div>

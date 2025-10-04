@@ -47,17 +47,14 @@ export function useReferral() {
     }
 
     try {
-      const userReferralCode = generateReferralCode(user.id);
-      setReferralCode(userReferralCode);
-
-      // Initialize with empty data - referral system needs to be implemented
+      // Referral system removed - no dummy data
+      setReferralCode('');
       setReferralStats({
         totalReferrals: 0,
         activeReferrals: 0,
         totalCommissionEarned: 0,
         pendingCommission: 0,
       });
-
       setReferredUsers([]);
     } catch (error: any) {
       console.error('Error fetching referral data:', error);

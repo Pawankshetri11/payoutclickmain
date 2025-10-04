@@ -37,6 +37,14 @@ const Users = () => {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const { users, loading, updateUserStatus, updateKYCStatus } = useUsers();
 
+  // Calculate stats from real data
+  const stats = {
+    activeUsers: users.filter(u => u.status === 'active').length,
+    bannedUsers: users.filter(u => u.status === 'suspended').length,
+    kycPending: users.filter(u => u.kyc_status === 'pending').length,
+    withBalance: users.filter(u => u.balance > 0).length,
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "active":
@@ -88,7 +96,7 @@ const Users = () => {
               <UsersIcon className="h-5 w-5 text-success" />
               <div>
                 <p className="text-sm text-muted-foreground">Active Users</p>
-                <p className="text-xl font-bold text-success">8,547</p>
+                <p className="text-xl font-bold text-success">{stats.activeUsers}</p>
               </div>
             </div>
           </CardContent>
@@ -100,7 +108,7 @@ const Users = () => {
               <Ban className="h-5 w-5 text-destructive" />
               <div>
                 <p className="text-sm text-muted-foreground">Banned Users</p>
-                <p className="text-xl font-bold text-destructive">147</p>
+                <p className="text-xl font-bold text-destructive">{stats.bannedUsers}</p>
               </div>
             </div>
           </CardContent>
@@ -112,7 +120,7 @@ const Users = () => {
               <Shield className="h-5 w-5 text-warning" />
               <div>
                 <p className="text-sm text-muted-foreground">KYC Pending</p>
-                <p className="text-xl font-bold text-warning">423</p>
+                <p className="text-xl font-bold text-warning">{stats.kycPending}</p>
               </div>
             </div>
           </CardContent>
@@ -124,7 +132,7 @@ const Users = () => {
               <DollarSign className="h-5 w-5 text-primary" />
               <div>
                 <p className="text-sm text-muted-foreground">With Balance</p>
-                <p className="text-xl font-bold text-primary">2,847</p>
+                <p className="text-xl font-bold text-primary">{stats.withBalance}</p>
               </div>
             </div>
           </CardContent>

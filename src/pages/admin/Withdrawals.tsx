@@ -37,6 +37,10 @@ const Withdrawals = () => {
   const { withdrawals, loading, updateWithdrawalStatus } = useWithdrawals();
 
   // Calculate stats from real data
+  const now = new Date();
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
   const stats = {
     pending: withdrawals.filter(w => w.status === 'pending').length,
     pendingAmount: withdrawals
@@ -53,6 +57,22 @@ const Withdrawals = () => {
         const isToday = new Date(w.created_at).toDateString() === new Date().toDateString();
         return isApproved && isToday;
       })
+      .reduce((sum, w) => sum + w.amount, 0),
+    rejectedThisWeek: withdrawals.filter(w => {
+      const isRejected = w.status === 'rejected';
+      const isThisWeek = new Date(w.created_at) >= weekAgo;
+      return isRejected && isThisWeek;
+    }).length,
+    rejectedThisWeekAmount: withdrawals
+      .filter(w => {
+        const isRejected = w.status === 'rejected';
+        const isThisWeek = new Date(w.created_at) >= weekAgo;
+        return isRejected && isThisWeek;
+      })
+      .reduce((sum, w) => sum + w.amount, 0),
+    totalThisMonth: withdrawals.filter(w => new Date(w.created_at) >= monthStart).length,
+    totalThisMonthAmount: withdrawals
+      .filter(w => new Date(w.created_at) >= monthStart)
       .reduce((sum, w) => sum + w.amount, 0),
   };
 
@@ -160,8 +180,8 @@ const Withdrawals = () => {
               <XCircle className="h-5 w-5 text-destructive" />
               <div>
                 <p className="text-sm text-muted-foreground">Rejected This Week</p>
-                <p className="text-xl font-bold text-destructive">12</p>
-                <p className="text-xs text-muted-foreground">₹5,240.00</p>
+                <p className="text-xl font-bold text-destructive">{stats.rejectedThisWeek}</p>
+                <p className="text-xs text-muted-foreground">₹{stats.rejectedThisWeekAmount.toFixed(2)}</p>
               </div>
             </div>
           </CardContent>
@@ -173,8 +193,9 @@ const Withdrawals = () => {
               <DollarSign className="h-5 w-5 text-primary" />
               <div>
                 <p className="text-sm text-muted-foreground">Total This Month</p>
-                <p className="text-xl font-bold text-primary">₹156K</p>
-                <p className="text-xs text-success">Processing fee: ₹780</p>
+                <p className="text-xl font-bold text-primary">{stats.totalThisMonth}</p>
+                <p className="text-xs text-muted-foreground">₹{stats.totalThisMonthAmount.toFixed(2)}</p>
+                <p className="text-xs text-success">Fee: ₹{(stats.totalThisMonthAmount * 0.02).toFixed(2)}</p>
               </div>
             </div>
           </CardContent>

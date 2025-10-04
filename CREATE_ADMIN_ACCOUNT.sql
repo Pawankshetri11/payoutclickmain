@@ -4,58 +4,84 @@
 -- Password: 4Amtech@1@
 -- ====================================================
 
--- IMPORTANT: Run this AFTER you've:
--- 1. Created the account via Supabase Dashboard or Auth API
--- 2. Or signed up through the application
+-- PREREQUISITE: Run DATABASE_SETUP_COMPLETE.sql first!
 
--- Step 1: Find the user ID for admin@payoutclick.io
--- Run this first to get the user_id:
-SELECT id, email, created_at FROM auth.users WHERE email = 'admin@payoutclick.io';
+-- ====================================================
+-- STEP 1: Create Admin User in Supabase Dashboard
+-- ====================================================
 
--- Step 2: Insert admin role (Replace YOUR_USER_ID with the actual ID from step 1)
+-- Go to Supabase Dashboard > Authentication > Users
+-- Click "Add User" or "Invite User"
+-- Enter:
+--   Email: admin@payoutclick.io
+--   Password: 4Amtech@1@
+--   Auto Confirm User: YES (check this box!)
+-- Click "Create User" or "Send Invitation"
+
+-- ====================================================
+-- STEP 2: Get the User ID
+-- ====================================================
+
+-- Run this to find the admin user ID:
+SELECT id, email, created_at, email_confirmed_at 
+FROM auth.users 
+WHERE email = 'admin@payoutclick.io';
+
+-- Copy the 'id' value from the result
+
+-- ====================================================
+-- STEP 3: Assign Admin Role
+-- ====================================================
+
+-- Replace 'PASTE_USER_ID_HERE' with the actual user ID from Step 2
 INSERT INTO public.user_roles (user_id, role)
-VALUES ('YOUR_USER_ID_HERE', 'admin')
+VALUES ('PASTE_USER_ID_HERE', 'admin')
 ON CONFLICT (user_id, role) DO NOTHING;
 
--- Step 3: Verify admin access
+-- ====================================================
+-- STEP 4: Verify Admin Setup
+-- ====================================================
+
+-- Check if admin role was assigned correctly:
 SELECT 
   u.id,
   u.email,
+  u.email_confirmed_at,
   ur.role,
   ur.created_at as role_assigned_at
 FROM auth.users u
-JOIN public.user_roles ur ON ur.user_id = u.id
+LEFT JOIN public.user_roles ur ON ur.user_id = u.id
 WHERE u.email = 'admin@payoutclick.io';
 
--- ====================================================
--- ALTERNATIVE: Create admin account directly via SQL
--- (Only if you want to create via SQL instead of signup)
--- ====================================================
-
--- Note: This approach requires access to Supabase service_role key
--- It's BETTER to create the account via the signup page or Supabase Dashboard
--- Then just assign the admin role using the steps above
+-- You should see:
+-- - email: admin@payoutclick.io
+-- - email_confirmed_at: should have a timestamp (not null)
+-- - role: admin
+-- - role_assigned_at: should have a timestamp
 
 -- ====================================================
--- MANUAL STEPS (RECOMMENDED):
+-- STEP 5: Test Admin Login
 -- ====================================================
 
--- 1. Go to Supabase Dashboard > Authentication > Users
--- 2. Click "Add User" 
--- 3. Enter:
---    Email: admin@payoutclick.io
---    Password: 4Amtech@1@
---    Auto Confirm: YES (check this box)
--- 4. Click "Create User"
--- 5. Copy the User ID
--- 6. Run this SQL with the copied ID:
+-- Now you can log in at: /admin/login
+-- Email: admin@payoutclick.io
+-- Password: 4Amtech@1@
 
-/*
-INSERT INTO public.user_roles (user_id, role)
-VALUES ('PASTE_USER_ID_HERE', 'admin');
-*/
+-- ====================================================
+-- TROUBLESHOOTING
+-- ====================================================
 
--- 7. Verify by running:
-/*
+-- If login fails, check:
+
+-- 1. Is email confirmed?
+SELECT email, email_confirmed_at FROM auth.users WHERE email = 'admin@payoutclick.io';
+-- If email_confirmed_at is NULL, update it:
+UPDATE auth.users SET email_confirmed_at = now() WHERE email = 'admin@payoutclick.io';
+
+-- 2. Does admin role exist?
 SELECT * FROM public.user_roles WHERE role = 'admin';
-*/
+-- If no results, run Step 3 again with correct user ID
+
+-- 3. Check if user_roles table exists:
+SELECT table_name FROM information_schema.tables WHERE table_name = 'user_roles';
+-- If no results, run DATABASE_SETUP_COMPLETE.sql first

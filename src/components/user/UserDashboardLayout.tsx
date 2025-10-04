@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { appStore } from "@/store/appStore";
-import { useState, useEffect } from "react";
-import { NavLink } from "react-router-dom";
+import { useState } from "react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfile";
 
 const menuItems = [
   { title: "Dashboard", url: "/user", icon: User },
@@ -36,13 +37,15 @@ interface UserDashboardLayoutProps {
 
 export function UserDashboardLayout({ children }: UserDashboardLayoutProps) {
   const isMobile = useIsMobile();
-  const [user, setUser] = useState(appStore.users[0]); // Mock current user
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+  const { profile, loading } = useProfile();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
-  useEffect(() => {
-    // Update user data when store changes
-    setUser(appStore.users[0]);
-  }, []);
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/auth/login');
+  };
 
   return (
     <SidebarProvider>
@@ -130,7 +133,7 @@ export function UserDashboardLayout({ children }: UserDashboardLayoutProps) {
                           <Button 
                             onClick={() => {
                               setIsSheetOpen(false);
-                              // Add your logout logic here
+                              handleLogout();
                             }}
                             variant="ghost" 
                             className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-destructive/10"
@@ -160,7 +163,9 @@ export function UserDashboardLayout({ children }: UserDashboardLayoutProps) {
               <div className="flex items-center gap-2 md:gap-4">
               <div className="flex items-center gap-2 px-2 md:px-3 py-1 rounded-full bg-primary/10 border border-primary/30">
                 <Wallet className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium text-primary">₹{user.balance.toFixed(2)}</span>
+                <span className="text-sm font-medium text-primary">
+                  {loading ? '...' : `₹${(profile?.balance || 0).toFixed(2)}`}
+                </span>
               </div>
                 
                 <Button variant="ghost" size="icon" className="relative hover:bg-accent/50">

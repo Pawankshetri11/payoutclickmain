@@ -7,8 +7,13 @@
 -- 1. CREATE USER ROLES SYSTEM
 -- =====================================================
 
--- Create role enum
-CREATE TYPE IF NOT EXISTS public.app_role AS ENUM ('admin', 'moderator', 'user');
+-- Create role enum (with proper error handling)
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'app_role') THEN
+    CREATE TYPE public.app_role AS ENUM ('admin', 'moderator', 'user');
+  END IF;
+END $$;
 
 -- Create user_roles table
 CREATE TABLE IF NOT EXISTS public.user_roles (
@@ -21,6 +26,19 @@ CREATE TABLE IF NOT EXISTS public.user_roles (
 
 -- Enable RLS on user_roles
 ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies on user_roles if they exist
+DROP POLICY IF EXISTS "Users can view own roles" ON public.user_roles;
+DROP POLICY IF EXISTS "Admins can manage all roles" ON public.user_roles;
+
+-- RLS Policies for user_roles
+CREATE POLICY "Users can view own roles"
+  ON public.user_roles FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Admins can manage all roles"
+  ON public.user_roles FOR ALL
+  USING (public.is_admin(auth.uid()));
 
 -- Create security definer function to check admin role
 CREATE OR REPLACE FUNCTION public.is_admin(user_id UUID)
@@ -144,6 +162,9 @@ CREATE TABLE IF NOT EXISTS public.earnings (
 
 ALTER TABLE public.earnings ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own earnings" ON public.earnings;
+DROP POLICY IF EXISTS "Admins can view all earnings" ON public.earnings;
+
 CREATE POLICY "Users can view own earnings"
   ON public.earnings FOR SELECT
   USING (auth.uid() = user_id);
@@ -165,6 +186,10 @@ CREATE TABLE IF NOT EXISTS public.withdrawals (
 );
 
 ALTER TABLE public.withdrawals ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own withdrawals" ON public.withdrawals;
+DROP POLICY IF EXISTS "Users can create own withdrawals" ON public.withdrawals;
+DROP POLICY IF EXISTS "Admins can manage all withdrawals" ON public.withdrawals;
 
 CREATE POLICY "Users can view own withdrawals"
   ON public.withdrawals FOR SELECT
@@ -194,6 +219,9 @@ CREATE TABLE IF NOT EXISTS public.jobs (
 
 ALTER TABLE public.jobs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Anyone can view active jobs" ON public.jobs;
+DROP POLICY IF EXISTS "Admins can manage jobs" ON public.jobs;
+
 CREATE POLICY "Anyone can view active jobs"
   ON public.jobs FOR SELECT
   USING (status = 'active');
@@ -215,6 +243,11 @@ CREATE TABLE IF NOT EXISTS public.tasks (
 );
 
 ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own tasks" ON public.tasks;
+DROP POLICY IF EXISTS "Users can create own tasks" ON public.tasks;
+DROP POLICY IF EXISTS "Users can update own tasks" ON public.tasks;
+DROP POLICY IF EXISTS "Admins can manage all tasks" ON public.tasks;
 
 CREATE POLICY "Users can view own tasks"
   ON public.tasks FOR SELECT

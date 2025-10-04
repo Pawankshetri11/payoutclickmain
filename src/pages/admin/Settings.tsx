@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useOAuthSettings } from "@/hooks/useOAuthSettings";
 import {
   Settings as SettingsIcon,
   Server,
@@ -20,6 +21,7 @@ import {
   Save,
   AlertTriangle,
   CheckCircle,
+  Key,
 } from "lucide-react";
 
 const Settings = () => {
@@ -27,6 +29,28 @@ const Settings = () => {
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [autoBackup, setAutoBackup] = useState(true);
   const [ipRestriction, setIpRestriction] = useState(false);
+  
+  const { settings: oauthSettings, loading: oauthLoading, updateSettings } = useOAuthSettings();
+  const [googleClientId, setGoogleClientId] = useState("");
+  const [googleClientSecret, setGoogleClientSecret] = useState("");
+  const [googleEnabled, setGoogleEnabled] = useState(false);
+
+  // Update local state when OAuth settings load
+  useEffect(() => {
+    if (oauthSettings) {
+      setGoogleClientId(oauthSettings.client_id || "");
+      setGoogleClientSecret(oauthSettings.client_secret || "");
+      setGoogleEnabled(oauthSettings.enabled);
+    }
+  }, [oauthSettings]);
+
+  const handleSaveOAuth = async () => {
+    await updateSettings({
+      client_id: googleClientId,
+      client_secret: googleClientSecret,
+      enabled: googleEnabled,
+    });
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -121,9 +145,10 @@ const Settings = () => {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="general" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="general">General</TabsTrigger>
               <TabsTrigger value="security">Security</TabsTrigger>
+              <TabsTrigger value="oauth">OAuth</TabsTrigger>
               <TabsTrigger value="application">Application</TabsTrigger>
               <TabsTrigger value="server">Server</TabsTrigger>
               <TabsTrigger value="cache">Cache</TabsTrigger>
@@ -300,6 +325,94 @@ const Settings = () => {
                     </div>
                     <Switch id="session-security" defaultChecked />
                   </div>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="oauth" className="space-y-6">
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Key className="h-5 w-5 text-primary" />
+                  Google OAuth Configuration
+                </h3>
+                
+                <div className="p-4 border border-info/20 bg-info/5 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-5 w-5 text-info mt-0.5" />
+                    <div className="text-sm text-muted-foreground">
+                      <p className="font-medium text-info mb-2">Setup Instructions:</p>
+                      <ol className="list-decimal list-inside space-y-1">
+                        <li>Go to Google Cloud Console and create a new project</li>
+                        <li>Enable Google+ API</li>
+                        <li>Create OAuth 2.0 credentials (Web application)</li>
+                        <li>Add authorized redirect URI: <code className="bg-background/50 px-1 rounded">{window.location.origin}/</code></li>
+                        <li>Copy the Client ID and Client Secret below</li>
+                        <li>Configure redirect URL in Supabase Authentication settings</li>
+                      </ol>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 border border-border/50 rounded-lg">
+                    <div>
+                      <Label htmlFor="google-oauth-enabled">Enable Google Login</Label>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Allow users to sign in with their Google account
+                      </p>
+                    </div>
+                    <Switch
+                      id="google-oauth-enabled"
+                      checked={googleEnabled}
+                      onCheckedChange={setGoogleEnabled}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="google-client-id">Google Client ID</Label>
+                    <Input
+                      id="google-client-id"
+                      placeholder="Enter your Google OAuth Client ID"
+                      value={googleClientId}
+                      onChange={(e) => setGoogleClientId(e.target.value)}
+                      disabled={oauthLoading}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="google-client-secret">Google Client Secret</Label>
+                    <Input
+                      id="google-client-secret"
+                      type="password"
+                      placeholder="Enter your Google OAuth Client Secret"
+                      value={googleClientSecret}
+                      onChange={(e) => setGoogleClientSecret(e.target.value)}
+                      disabled={oauthLoading}
+                    />
+                  </div>
+
+                  <Button
+                    onClick={handleSaveOAuth}
+                    disabled={oauthLoading}
+                    className="bg-gradient-primary hover:opacity-90"
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    Save OAuth Settings
+                  </Button>
+
+                  {googleEnabled && googleClientId && (
+                    <div className="p-4 border border-success/20 bg-success/5 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <CheckCircle className="h-5 w-5 text-success mt-0.5" />
+                        <div>
+                          <h4 className="font-medium text-success">Google OAuth Enabled</h4>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Users can now sign up and log in using their Google account.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </TabsContent>

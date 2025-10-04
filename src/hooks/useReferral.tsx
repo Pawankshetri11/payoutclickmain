@@ -50,38 +50,15 @@ export function useReferral() {
       const userReferralCode = generateReferralCode(user.id);
       setReferralCode(userReferralCode);
 
-      // For now use mock data since tables don't exist yet
-      // TODO: Create referrals and referral_commissions tables in Supabase
-      const mockStats = {
-        totalReferrals: 3,
-        activeReferrals: 2,
-        totalCommissionEarned: 245.50,
-        pendingCommission: 45.00,
-      };
+      // Initialize with empty data - referral system needs to be implemented
+      setReferralStats({
+        totalReferrals: 0,
+        activeReferrals: 0,
+        totalCommissionEarned: 0,
+        pendingCommission: 0,
+      });
 
-      const mockReferredUsers = [
-        {
-          id: 1,
-          name: 'John Smith',
-          email: 'john@example.com',
-          joinDate: '2024-01-15',
-          status: 'active',
-          totalEarnings: 1200,
-          commissionEarned: 120,
-        },
-        {
-          id: 2,
-          name: 'Jane Doe',
-          email: 'jane@example.com',
-          joinDate: '2024-01-20',
-          status: 'active', 
-          totalEarnings: 850,
-          commissionEarned: 85,
-        },
-      ];
-
-      setReferralStats(mockStats);
-      setReferredUsers(mockReferredUsers);
+      setReferredUsers([]);
     } catch (error: any) {
       console.error('Error fetching referral data:', error);
       toast.error('Failed to load referral data');

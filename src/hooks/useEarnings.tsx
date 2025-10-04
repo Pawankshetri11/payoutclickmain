@@ -35,18 +35,53 @@ export function useEarnings() {
       const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-      // For now, use mock data since we need to implement the earnings tracking
-      // TODO: Fetch from tasks table where status = 'approved'
-      const mockEarnings = {
-        todayEarning: 125.50,
-        weekEarning: 567.30,
-        monthEarning: 1250.00,
-        balance: 750.00, // Amount available for withdrawal (26-30 of each month)
-        totalEarned: 3450.75,
-        pendingPayments: 125.00,
-      };
+      // Fetch real earnings from approved tasks
+      const { data: approvedTasks, error } = await supabase
+        .from('tasks')
+        .select('amount, approved_at')
+        .eq('user_id', user.id)
+        .eq('status', 'approved');
 
-      setEarnings(mockEarnings);
+      if (error) throw error;
+
+      const todayEarning = (approvedTasks || [])
+        .filter(t => new Date(t.approved_at || '') >= today)
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const weekEarning = (approvedTasks || [])
+        .filter(t => new Date(t.approved_at || '') >= weekAgo)
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const monthEarning = (approvedTasks || [])
+        .filter(t => new Date(t.approved_at || '') >= monthStart)
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const totalEarned = (approvedTasks || []).reduce((sum, t) => sum + t.amount, 0);
+
+      // Get pending tasks
+      const { data: pendingTasks } = await supabase
+        .from('tasks')
+        .select('amount')
+        .eq('user_id', user.id)
+        .eq('status', 'pending');
+
+      const pendingPayments = (pendingTasks || []).reduce((sum, t) => sum + t.amount, 0);
+
+      // Get current balance from profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('balance')
+        .eq('user_id', user.id)
+        .single();
+
+      setEarnings({
+        todayEarning,
+        weekEarning,
+        monthEarning,
+        balance: profile?.balance || 0,
+        totalEarned,
+        pendingPayments,
+      });
     } catch (error: any) {
       console.error('Error fetching earnings:', error);
     } finally {

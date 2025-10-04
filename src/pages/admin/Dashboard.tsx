@@ -2,6 +2,7 @@ import { StatCard } from "@/components/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useAdminStats } from "@/hooks/useAdminStats";
 import {
   Users,
   Briefcase,
@@ -15,6 +16,19 @@ import {
 } from "lucide-react";
 
 const Dashboard = () => {
+  const { stats, loading } = useAdminStats();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen p-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen p-6 space-y-6">
         {/* Page Header */}
@@ -34,33 +48,29 @@ const Dashboard = () => {
          <div className="relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg">
            <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-10 translate-x-10"></div>
            <Users className="h-8 w-8 mb-4 opacity-90" />
-           <h3 className="text-2xl font-bold mb-1">12,847</h3>
+           <h3 className="text-2xl font-bold mb-1">{stats.totalUsers.toLocaleString()}</h3>
            <p className="text-blue-100 text-sm">Total Users</p>
-           <p className="text-blue-200 text-xs mt-1">+12% from last month</p>
          </div>
          
          <div className="relative overflow-hidden bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-6 text-white shadow-lg">
            <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-10 translate-x-10"></div>
            <Briefcase className="h-8 w-8 mb-4 opacity-90" />
-           <h3 className="text-2xl font-bold mb-1">3,247</h3>
+           <h3 className="text-2xl font-bold mb-1">{stats.activeJobs.toLocaleString()}</h3>
            <p className="text-emerald-100 text-sm">Active Jobs</p>
-           <p className="text-emerald-200 text-xs mt-1">+8% from last month</p>
          </div>
          
          <div className="relative overflow-hidden bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white shadow-lg">
            <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-10 translate-x-10"></div>
            <CreditCard className="h-8 w-8 mb-4 opacity-90" />
-           <h3 className="text-2xl font-bold mb-1">₹28,45,920</h3>
+           <h3 className="text-2xl font-bold mb-1">₹{stats.totalDeposits.toLocaleString()}</h3>
            <p className="text-purple-100 text-sm">Total Deposits</p>
-           <p className="text-purple-200 text-xs mt-1">+15% from last month</p>
          </div>
          
          <div className="relative overflow-hidden bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white shadow-lg">
            <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-10 translate-x-10"></div>
            <ArrowDownToLine className="h-8 w-8 mb-4 opacity-90" />
-           <h3 className="text-2xl font-bold mb-1">₹1,28,470</h3>
+           <h3 className="text-2xl font-bold mb-1">₹{stats.pendingWithdrawals.toLocaleString()}</h3>
            <p className="text-orange-100 text-sm">Pending Withdrawals</p>
-           <p className="text-orange-200 text-xs mt-1">5 pending review</p>
          </div>
        </div>
 
@@ -71,11 +81,10 @@ const Dashboard = () => {
              <div className="flex items-center justify-between">
                <div>
                  <p className="text-sm font-medium text-green-600">Today's Revenue</p>
-                 <p className="text-2xl font-bold text-green-700">₹84,250</p>
+                 <p className="text-2xl font-bold text-green-700">₹{stats.todayRevenue.toLocaleString()}</p>
                </div>
                <TrendingUp className="h-8 w-8 text-green-500" />
              </div>
-             <p className="text-xs text-green-600 mt-2">+23% from yesterday</p>
            </CardContent>
          </Card>
          
@@ -84,11 +93,10 @@ const Dashboard = () => {
              <div className="flex items-center justify-between">
                <div>
                  <p className="text-sm font-medium text-blue-600">Tasks Completed</p>
-                 <p className="text-2xl font-bold text-blue-700">1,247</p>
+                 <p className="text-2xl font-bold text-blue-700">{stats.tasksCompleted.toLocaleString()}</p>
                </div>
                <CheckCircle className="h-8 w-8 text-blue-500" />
              </div>
-             <p className="text-xs text-blue-600 mt-2">+18% from yesterday</p>
            </CardContent>
          </Card>
          
@@ -97,11 +105,10 @@ const Dashboard = () => {
              <div className="flex items-center justify-between">
                <div>
                  <p className="text-sm font-medium text-amber-600">Pending Reviews</p>
-                 <p className="text-2xl font-bold text-amber-700">47</p>
+                 <p className="text-2xl font-bold text-amber-700">{stats.pendingReviews.toLocaleString()}</p>
                </div>
                <Clock className="h-8 w-8 text-amber-500" />
              </div>
-             <p className="text-xs text-amber-600 mt-2">Requires attention</p>
            </CardContent>
          </Card>
        </div>

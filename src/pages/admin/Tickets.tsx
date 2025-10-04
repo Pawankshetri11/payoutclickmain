@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useTickets } from "@/hooks/useTickets";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,57 +34,7 @@ import {
 
 const Tickets = () => {
   const [searchTerm, setSearchTerm] = useState("");
-
-  const mockTickets = [
-    {
-      id: "TKT-4821",
-      subject: "Unable to withdraw funds",
-      user: "John Doe",
-      email: "john.doe@example.com",
-      priority: "high",
-      category: "Payment Issues",
-      status: "pending",
-      created: "2024-01-15 14:30",
-      lastReply: "2024-01-15 16:45",
-      messages: 3,
-    },
-    {
-      id: "TKT-4820",
-      subject: "Account verification problem",
-      user: "Jane Smith",
-      email: "jane.smith@example.com",
-      priority: "medium",
-      category: "Account Issues",
-      status: "answered",
-      created: "2024-01-15 10:20",
-      lastReply: "2024-01-15 14:15",
-      messages: 2,
-    },
-    {
-      id: "TKT-4819",
-      subject: "Project submission error",
-      user: "Mike Johnson",
-      email: "mike.johnson@example.com",
-      priority: "low",
-      category: "Technical Support",
-      status: "closed",
-      created: "2024-01-14 16:30",
-      lastReply: "2024-01-14 18:00",
-      messages: 5,
-    },
-    {
-      id: "TKT-4818",
-      subject: "Password reset request",
-      user: "Sarah Wilson",
-      email: "sarah.wilson@example.com",
-      priority: "low",
-      category: "Account Issues",
-      status: "closed",
-      created: "2024-01-14 09:15",
-      lastReply: "2024-01-14 09:30",
-      messages: 1,
-    },
-  ];
+  const { tickets, loading, updateTicketStatus } = useTickets(true);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -241,67 +192,87 @@ const Tickets = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {mockTickets.map((ticket) => (
-                    <TableRow key={ticket.id} className="hover:bg-accent/50">
-                      <TableCell>
-                        <p className="font-medium text-foreground">{ticket.id}</p>
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium text-foreground">{ticket.subject}</p>
-                          <div className="flex items-center gap-1 mt-1">
-                            <MessageSquare className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground">{ticket.messages} messages</span>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-muted-foreground" />
-                          <div>
-                            <p className="font-medium">{ticket.user}</p>
-                            <p className="text-sm text-muted-foreground">{ticket.email}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {getPriorityBadge(ticket.priority)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{ticket.category}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {getStatusIcon(ticket.status)}
-                          {getStatusBadge(ticket.status)}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          <div className="flex items-center gap-1 text-muted-foreground">
-                            <Calendar className="h-3 w-3" />
-                            Created: {ticket.created}
-                          </div>
-                          <div className="flex items-center gap-1 text-muted-foreground mt-1">
-                            <Reply className="h-3 w-3" />
-                            Last reply: {ticket.lastReply}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="sm">
-                            <Eye className="h-4 w-4 mr-1" />
-                            View
-                          </Button>
-                          <Button variant="ghost" size="sm" className="text-primary hover:text-primary">
-                            <Reply className="h-4 w-4 mr-1" />
-                            Reply
-                          </Button>
-                        </div>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                        <p className="text-sm text-muted-foreground mt-2">Loading tickets...</p>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : tickets.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8">
+                        <p className="text-muted-foreground">No tickets found</p>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    tickets.map((ticket) => (
+                      <TableRow key={ticket.id} className="hover:bg-accent/50">
+                        <TableCell>
+                          <p className="font-medium text-foreground">{ticket.id.substring(0, 10)}</p>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium text-foreground">{ticket.subject}</p>
+                            <div className="flex items-center gap-1 mt-1">
+                              <MessageSquare className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-xs text-muted-foreground">View message</span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <User className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <p className="font-medium">{ticket.profiles?.name || 'N/A'}</p>
+                              <p className="text-sm text-muted-foreground">{ticket.profiles?.email || 'N/A'}</p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {getPriorityBadge(ticket.priority)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{ticket.category}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {getStatusIcon(ticket.status)}
+                            {getStatusBadge(ticket.status)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <Calendar className="h-3 w-3" />
+                              Created: {new Date(ticket.created_at).toLocaleDateString()}
+                            </div>
+                            <div className="flex items-center gap-1 text-muted-foreground mt-1">
+                              <Reply className="h-3 w-3" />
+                              Updated: {new Date(ticket.updated_at).toLocaleDateString()}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="sm">
+                              <Eye className="h-4 w-4 mr-1" />
+                              View
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-primary hover:text-primary"
+                              onClick={() => updateTicketStatus(ticket.id, 'answered')}
+                            >
+                              <Reply className="h-4 w-4 mr-1" />
+                              Reply
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </TabsContent>

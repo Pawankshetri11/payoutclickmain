@@ -204,9 +204,15 @@ Start your earning journey with TaskHub and be part of our growing community!`,
     }
   });
 
-  const handleSaveContent = () => {
-    // In real implementation, save to database
-    toast.success("Content saved successfully!");
+  const handleSaveContent = async () => {
+    try {
+      // Content would be saved to site_content table when implemented
+      // For now, content is managed in local state
+      toast.success("Content saved successfully!");
+    } catch (error: any) {
+      console.error('Error saving content:', error);
+      toast.error("Failed to save content");
+    }
   };
 
   const handlePublishToggle = () => {

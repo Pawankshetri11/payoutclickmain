@@ -44,56 +44,36 @@ const ReferralSystem = () => {
   const [referrals, setReferrals] = useState([]);
   const [commissions, setCommissions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalReferrals: 0,
+    activeReferrals: 0,
+    totalCommissions: 0,
+    companyRevenue: 0,
+  });
 
-  const mockReferrals = [
-    {
-      id: 1,
-      referrer: "John Doe",
-      referrerEmail: "john@example.com",
-      referee: "Jane Smith",
-      refereeEmail: "jane@example.com",
-      status: "active",
-      joinDate: "2024-01-15",
-      totalEarnings: 1200,
-      commissionEarned: 120,
-      withdrawals: 3,
-    },
-    {
-      id: 2,
-      referrer: "Mike Johnson",
-      referrerEmail: "mike@example.com",
-      referee: "Sarah Wilson",
-      refereeEmail: "sarah@example.com",
-      status: "active",
-      joinDate: "2024-01-12",
-      totalEarnings: 850,
-      commissionEarned: 85,
-      withdrawals: 2,
-    },
-  ];
+  useEffect(() => {
+    fetchReferralData();
+  }, []);
 
-  const mockCommissions = [
-    {
-      id: 1,
-      referrer: "John Doe",
-      referee: "Jane Smith",
-      withdrawalAmount: 500,
-      commissionAmount: 50,
-      companyFee: 50,
-      date: "2024-01-20 14:30",
-      status: "paid",
-    },
-    {
-      id: 2,
-      referrer: "Mike Johnson",
-      referee: "Sarah Wilson",
-      withdrawalAmount: 300,
-      commissionAmount: 30,
-      companyFee: 30,
-      date: "2024-01-19 16:45",
-      status: "paid",
-    },
-  ];
+  const fetchReferralData = async () => {
+    try {
+      setLoading(true);
+      // Referral system would query from referrals table when implemented
+      setReferrals([]);
+      setCommissions([]);
+      setStats({
+        totalReferrals: 0,
+        activeReferrals: 0,
+        totalCommissions: 0,
+        companyRevenue: 0,
+      });
+    } catch (error: any) {
+      console.error('Error fetching referral data:', error);
+      toast.error('Failed to load referral data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const updateSettings = async () => {
     try {
@@ -200,8 +180,8 @@ const ReferralSystem = () => {
               <Users className="h-5 w-5 text-primary" />
               <div>
                 <p className="text-sm text-muted-foreground">Total Referrals</p>
-                <p className="text-xl font-bold text-primary">245</p>
-                <p className="text-xs text-success">+12 this week</p>
+                <p className="text-xl font-bold text-primary">{stats.totalReferrals}</p>
+                <p className="text-xs text-success">No referrals yet</p>
               </div>
             </div>
           </CardContent>
@@ -213,8 +193,8 @@ const ReferralSystem = () => {
               <TrendingUp className="h-5 w-5 text-success" />
               <div>
                 <p className="text-sm text-muted-foreground">Active Referrals</p>
-                <p className="text-xl font-bold text-success">189</p>
-                <p className="text-xs text-muted-foreground">77% conversion</p>
+                <p className="text-xl font-bold text-success">{stats.activeReferrals}</p>
+                <p className="text-xs text-muted-foreground">0% conversion</p>
               </div>
             </div>
           </CardContent>
@@ -226,7 +206,7 @@ const ReferralSystem = () => {
               <DollarSign className="h-5 w-5 text-warning" />
               <div>
                 <p className="text-sm text-muted-foreground">Total Commissions</p>
-                <p className="text-xl font-bold text-warning">₹12,450</p>
+                <p className="text-xl font-bold text-warning">₹{stats.totalCommissions}</p>
                 <p className="text-xs text-muted-foreground">This month</p>
               </div>
             </div>
@@ -239,7 +219,7 @@ const ReferralSystem = () => {
               <Percent className="h-5 w-5 text-accent" />
               <div>
                 <p className="text-sm text-muted-foreground">Company Revenue</p>
-                <p className="text-xl font-bold text-accent">₹8,750</p>
+                <p className="text-xl font-bold text-accent">₹{stats.companyRevenue}</p>
                 <p className="text-xs text-muted-foreground">From withdrawals</p>
               </div>
             </div>
@@ -285,8 +265,21 @@ const ReferralSystem = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {mockReferrals.map((referral) => (
-                    <TableRow key={referral.id} className="hover:bg-accent/50">
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                      </TableCell>
+                    </TableRow>
+                  ) : referrals.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                        No referral relationships found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    referrals.map((referral: any) => (
+                      <TableRow key={referral.id} className="hover:bg-accent/50">
                       <TableCell>
                         <div>
                           <p className="font-medium text-foreground">{referral.referrer}</p>
@@ -321,7 +314,8 @@ const ReferralSystem = () => {
                         </Button>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ))
+                  )}
                 </TableBody>
               </Table>
             </TabsContent>
@@ -340,8 +334,21 @@ const ReferralSystem = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {mockCommissions.map((commission) => (
-                    <TableRow key={commission.id} className="hover:bg-accent/50">
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                      </TableCell>
+                    </TableRow>
+                  ) : commissions.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        No commission history found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    commissions.map((commission: any) => (
+                      <TableRow key={commission.id} className="hover:bg-accent/50">
                       <TableCell className="font-medium text-foreground">
                         {commission.referrer}
                       </TableCell>
@@ -364,7 +371,8 @@ const ReferralSystem = () => {
                         {getStatusBadge(commission.status)}
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ))
+                  )}
                 </TableBody>
               </Table>
             </TabsContent>

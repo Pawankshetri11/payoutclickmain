@@ -80,16 +80,15 @@ export default function TaskDetail() {
       return;
     }
 
-    // For now, simulate code verification since job_codes table may not exist yet
-    // In production, this would check against the job_codes table
-    const mockValidCodes = ['TASK123', 'CODE456', 'VERIFY789', 'TEST999'];
-    
-    if (mockValidCodes.includes(code.trim())) {
-      setCodeVerified(true);
-      toast.success("Code verified!");
-    } else {
+    try {
+      // job_codes table needs to be created in database
+      // For now, verification is disabled until table exists
       setCodeVerified(false);
-      toast.error("Invalid code - try: TASK123, CODE456, VERIFY789, or TEST999");
+      toast.error("Code verification unavailable - job_codes table not created yet");
+    } catch (error: any) {
+      console.error('Error verifying code:', error);
+      setCodeVerified(false);
+      toast.error("Unable to verify code");
     }
   };
 

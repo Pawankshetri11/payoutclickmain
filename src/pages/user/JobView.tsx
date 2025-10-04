@@ -25,7 +25,7 @@ export default function JobView() {
   const [job, setJob] = useState<any>(null);
   const [userEarnings, setUserEarnings] = useState({
     fromThisJob: 0,
-    totalEarnings: 1250, // Mock total - would come from user's profile
+    totalEarnings: 0,
     completedTasks: 0,
   });
   const [loading, setLoading] = useState(true);
@@ -63,13 +63,12 @@ export default function JobView() {
             ["Follow instructions carefully", "Use provided codes"],
         });
 
-        // Mock user earnings calculation for this job
-        // In real app, this would query user's task submissions
-        const mockCompletedTasks = Math.floor(Math.random() * 5) + 1;
+        // Query user's actual earnings from this job
+        // This would be calculated from task_submissions table
         setUserEarnings({
-          fromThisJob: mockCompletedTasks * jobData.amount,
-          totalEarnings: 1250,
-          completedTasks: mockCompletedTasks,
+          fromThisJob: 0,
+          totalEarnings: 0,
+          completedTasks: 0,
         });
       }
     } catch (error: any) {

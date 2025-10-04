@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +30,28 @@ export default function WithdrawalRequest() {
     accountId: "",
   });
 
-  const currentBalance = 1250; // Mock balance
+  const [currentBalance, setCurrentBalance] = useState(0);
+
+  useEffect(() => {
+    fetchUserBalance();
+  }, [user]);
+
+  const fetchUserBalance = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('balance')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      setCurrentBalance(data?.balance || 0);
+    } catch (error: any) {
+      console.error('Error fetching balance:', error);
+    }
+  };
   const minWithdrawal = 100;
   const maxWithdrawal = 10000;
 

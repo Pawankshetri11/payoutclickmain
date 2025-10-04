@@ -21,6 +21,9 @@ ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
 -- STEP 2: Create admin check function
 -- ====================================================
 
+-- Drop existing function first
+DROP FUNCTION IF EXISTS public.is_admin(uuid) CASCADE;
+
 CREATE OR REPLACE FUNCTION public.is_admin(check_user_id uuid)
 RETURNS BOOLEAN
 LANGUAGE sql

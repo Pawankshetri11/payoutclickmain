@@ -13,24 +13,36 @@ import {
   DollarSign,
   ArrowUpRight
 } from "lucide-react";
-import { appStore } from "@/store/appStore";
 import { useState, useEffect } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MobileStatsCard } from "@/components/user/MobileStatsCard";
 import { useEarnings } from "@/hooks/useEarnings";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfile";
+import { useTasks } from "@/hooks/useTasks";
 
 export default function UserDashboard() {
-  const [user, setUser] = useState(appStore.users[0]); // Mock current user
-  const [recentTasks, setRecentTasks] = useState(appStore.tasks.filter(t => t.userId === '1').slice(0, 5));
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { profile, loading: profileLoading } = useProfile();
+  const { tasks, loading: tasksLoading } = useTasks();
   const { earnings, loading: earningsLoading, isWithdrawalPeriod } = useEarnings();
 
-  useEffect(() => {
-    setUser(appStore.users[0]);
-    setRecentTasks(appStore.tasks.filter(t => t.userId === '1').slice(0, 5));
-  }, []);
+  // Get recent tasks (last 5)
+  const recentTasks = tasks.slice(0, 5);
+
+  if (profileLoading) {
+    return (
+      <div className="p-4 md:p-6 flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   // New earnings-based stats
   const earningsStats = [
@@ -73,21 +85,23 @@ export default function UserDashboard() {
     <div className="p-4 md:p-6 space-y-6">
       {isMobile && (
         <MobileStatsCard 
-          balance={user.balance}
-          totalEarnings={user.totalEarnings}
-          completedTasks={user.completedTasks}
-          level={user.level}
+          balance={profile?.balance || 0}
+          totalEarnings={profile?.total_earnings || 0}
+          completedTasks={profile?.completed_tasks || 0}
+          level={profile?.level || 'Bronze'}
         />
       )}
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground">Welcome back, {user.name}!</h1>
+          <h1 className="text-2xl md:text-3xl font-heading font-bold text-foreground">
+            Welcome back, {profile?.name || 'User'}!
+          </h1>
           <p className="text-muted-foreground text-sm md:text-base">Here's your dashboard overview</p>
         </div>
         <Badge variant="secondary" className="self-start sm:self-center bg-gradient-primary text-primary-foreground border-0">
           <Star className="h-4 w-4 mr-1" />
-          {user.level} Member
+          {profile?.level || 'Bronze'} Member
         </Badge>
       </div>
 
@@ -147,33 +161,59 @@ export default function UserDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {recentTasks.map((task) => (
-              <div key={task.id} className="flex items-center justify-between p-3 bg-accent/20 rounded-lg">
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-foreground truncate">{task.jobTitle}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {new Date(task.submittedAt).toLocaleDateString()}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge
-                    variant={
-                      task.status === 'approved' ? 'default' : 
-                      task.status === 'pending' ? 'secondary' : 'destructive'
-                    }
-                    className={
-                      task.status === 'approved' ? 'bg-gradient-success text-success-foreground' : ''
-                    }
-                  >
-                    {task.status}
-                  </Badge>
-                  <span className="font-medium text-primary">₹{task.amount}</span>
-                </div>
+            {tasksLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                <p className="text-sm text-muted-foreground mt-2">Loading tasks...</p>
               </div>
-            ))}
-            <Button variant="outline" className="w-full" size="sm">
-              View All Tasks
-            </Button>
+            ) : recentTasks.length === 0 ? (
+              <div className="text-center py-8">
+                <Clock className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
+                <p className="text-muted-foreground">No tasks yet</p>
+                <Button 
+                  variant="outline" 
+                  className="mt-4"
+                  onClick={() => navigate('/user/tasks')}
+                >
+                  Browse Tasks
+                </Button>
+              </div>
+            ) : (
+              <>
+                {recentTasks.map((task) => (
+                  <div key={task.id} className="flex items-center justify-between p-3 bg-accent/20 rounded-lg">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground truncate">{task.jobs?.title || 'Task'}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(task.submitted_at || task.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant={
+                          task.status === 'approved' ? 'default' : 
+                          task.status === 'pending' ? 'secondary' : 'destructive'
+                        }
+                        className={
+                          task.status === 'approved' ? 'bg-gradient-success text-success-foreground' : ''
+                        }
+                      >
+                        {task.status}
+                      </Badge>
+                      <span className="font-medium text-primary">₹{task.amount}</span>
+                    </div>
+                  </div>
+                ))}
+                <Button 
+                  variant="outline" 
+                  className="w-full" 
+                  size="sm"
+                  onClick={() => navigate('/user/my-tasks')}
+                >
+                  View All Tasks
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -230,9 +270,14 @@ export default function UserDashboard() {
             <Trophy className="h-12 w-12 mx-auto mb-4 text-primary-foreground" />
             <h3 className="text-xl font-bold mb-2">Keep Going!</h3>
             <p className="text-primary-foreground/80 mb-4">
-              Complete {5 - (user.completedTasks % 5)} more tasks to reach the next level
+              Complete {5 - ((profile?.completed_tasks || 0) % 5)} more tasks to reach the next level
             </p>
-            <Button variant="secondary" size="lg" className="w-full">
+            <Button 
+              variant="secondary" 
+              size="lg" 
+              className="w-full"
+              onClick={() => navigate('/user/tasks')}
+            >
               Find New Tasks
             </Button>
           </CardContent>

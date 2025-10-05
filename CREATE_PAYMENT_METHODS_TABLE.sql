@@ -30,27 +30,32 @@ CREATE TABLE IF NOT EXISTS public.payment_methods (
 ALTER TABLE public.payment_methods ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
+DROP POLICY IF EXISTS "Users can view their own payment methods" ON public.payment_methods;
 CREATE POLICY "Users can view their own payment methods"
 ON public.payment_methods FOR SELECT
 TO authenticated
 USING (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "Users can insert their own payment methods" ON public.payment_methods;
 CREATE POLICY "Users can insert their own payment methods"
 ON public.payment_methods FOR INSERT
 TO authenticated
 WITH CHECK (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "Users can update their own payment methods" ON public.payment_methods;
 CREATE POLICY "Users can update their own payment methods"
 ON public.payment_methods FOR UPDATE
 TO authenticated
 USING (user_id = auth.uid())
 WITH CHECK (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "Users can delete their own payment methods" ON public.payment_methods;
 CREATE POLICY "Users can delete their own payment methods"
 ON public.payment_methods FOR DELETE
 TO authenticated
 USING (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "Admins can view all payment methods" ON public.payment_methods;
 CREATE POLICY "Admins can view all payment methods"
 ON public.payment_methods FOR SELECT
 TO authenticated

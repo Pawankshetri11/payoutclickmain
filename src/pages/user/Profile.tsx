@@ -23,8 +23,7 @@ export default function Profile() {
   const [profileData, setProfileData] = useState({
     name: "",
     email: "",
-    phone: "",
-    bio: ""
+    phone: ""
   });
 
   useEffect(() => {
@@ -32,8 +31,7 @@ export default function Profile() {
       setProfileData({
         name: profile.name || "",
         email: profile.email || "",
-        phone: profile.phone || "",
-        bio: ""
+        phone: profile.phone || ""
       });
       setAvatarUrl(profile.avatar_url || "");
     }
@@ -136,7 +134,6 @@ export default function Profile() {
                     <h2 className="text-xl md:text-2xl font-bold text-foreground">
                       {profile?.name || "User"}
                     </h2>
-                    <p className="text-muted-foreground mt-1 text-sm md:text-base">{profileData.bio || "No bio yet"}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge className="bg-success/20 text-success border-success/30 text-xs">
@@ -182,11 +179,10 @@ export default function Profile() {
 
         {/* Profile Details */}
         <Tabs defaultValue="personal" className="space-y-4 md:space-y-6">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 text-xs md:text-sm">
+          <TabsList className="grid w-full grid-cols-3 text-xs md:text-sm">
             <TabsTrigger value="personal">Personal Info</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
             <TabsTrigger value="preferences">Preferences</TabsTrigger>
-            <TabsTrigger value="activity">Activity</TabsTrigger>
           </TabsList>
 
           <TabsContent value="personal">
@@ -239,16 +235,6 @@ export default function Profile() {
                     value={profileData.phone}
                     disabled={!isEditing}
                     onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="bio">Bio</Label>
-                  <Input 
-                    id="bio" 
-                    value={profileData.bio}
-                    disabled={!isEditing}
-                    onChange={(e) => setProfileData({...profileData, bio: e.target.value})}
                   />
                 </div>
               </CardContent>
@@ -330,38 +316,6 @@ export default function Profile() {
                     </div>
                     <Button variant="outline">EST (UTC-5)</Button>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="activity">
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
-                <CardDescription>Your recent actions and achievements</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {[
-                    { action: "Completed Google Review task", time: "2 hours ago", reward: "+$5.00" },
-                    { action: "Submitted app install task", time: "5 hours ago", reward: "+$3.50" },
-                    { action: "Completed survey task", time: "1 day ago", reward: "+$8.00" },
-                    { action: "Updated profile information", time: "2 days ago", reward: null },
-                    { action: "Completed social media task", time: "3 days ago", reward: "+$4.25" }
-                  ].map((activity, index) => (
-                    <div key={index} className="flex items-center justify-between py-2">
-                      <div>
-                        <p className="font-medium text-gray-900">{activity.action}</p>
-                        <p className="text-sm text-gray-600">{activity.time}</p>
-                      </div>
-                      {activity.reward && (
-                        <Badge className="bg-green-100 text-green-800">
-                          {activity.reward}
-                        </Badge>
-                      )}
-                    </div>
-                  ))}
                 </div>
               </CardContent>
             </Card>

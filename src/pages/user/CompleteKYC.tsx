@@ -232,14 +232,25 @@ export default function CompleteKYC() {
       {kycStatus === "rejected" && (
         <Card className="bg-destructive/10 border-destructive/20">
           <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-destructive" />
-              <div>
-                <p className="font-semibold text-destructive">KYC Rejected</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Please check your documents and submit again.
-                </p>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-destructive" />
+                <div>
+                  <p className="font-semibold text-destructive">KYC Rejected</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Your KYC was rejected. Please review and submit again with correct documents.
+                  </p>
+                </div>
               </div>
+              <Button 
+                onClick={() => {
+                  setKycStatus("pending");
+                  setCurrentStep(1);
+                }}
+                className="mt-2"
+              >
+                Resubmit KYC
+              </Button>
             </div>
           </CardContent>
         </Card>

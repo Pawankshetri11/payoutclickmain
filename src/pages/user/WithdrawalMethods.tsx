@@ -1,279 +1,143 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { CreditCard, Plus, Edit, Trash2, Landmark, Wallet, Smartphone, Globe } from "lucide-react";
+import { Landmark, Wallet, Info } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export default function WithdrawalMethods() {
-  const [methods, setMethods] = useState([
-    {
-      id: 1,
-      type: "bank",
-      name: "Chase Bank Account",
-      details: "****1234",
-      isDefault: true,
-      verified: true
-    },
-    {
-      id: 2,
-      type: "paypal",
-      name: "PayPal Account",
-      details: "john@example.com",
-      isDefault: false,
-      verified: true
-    },
-    {
-      id: 3,
-      type: "crypto",
-      name: "Bitcoin Wallet",
-      details: "1A1z...x9B2",
-      isDefault: false,
-      verified: false
-    }
-  ]);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const [isAddingMethod, setIsAddingMethod] = useState(false);
-  const [selectedType, setSelectedType] = useState("");
+  useEffect(() => {
+    fetchUserProfile();
+  }, []);
 
-  const getMethodIcon = (type: string) => {
-    switch (type) {
-      case "bank": return Landmark;
-      case "paypal": return Wallet;
-      case "crypto": return CreditCard;
-      case "mobile": return Smartphone;
-      default: return Globe;
+  const fetchUserProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error) throw error;
+      setUserProfile(data);
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      toast.error('Failed to load payment methods');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleAddMethod = () => {
-    // Dummy add method
-    const newMethod = {
-      id: Date.now(),
-      type: selectedType,
-      name: `New ${selectedType} Method`,
-      details: "****0000",
-      isDefault: false,
-      verified: false
-    };
-    setMethods([...methods, newMethod]);
-    setIsAddingMethod(false);
-    toast.success("Withdrawal method added successfully");
-  };
+  const hasBankDetails = userProfile?.bank_account_number && userProfile?.bank_name;
 
-  const handleSetDefault = (id: number) => {
-    setMethods(methods.map(method => ({
-      ...method,
-      isDefault: method.id === id
-    })));
-    toast.success("Default withdrawal method updated");
-  };
-
-  const handleDelete = (id: number) => {
-    setMethods(methods.filter(method => method.id !== id));
-    toast.success("Withdrawal method removed");
-  };
+  if (loading) {
+    return (
+      <div className="container mx-auto px-3 md:px-6 py-4 md:py-8 max-w-4xl">
+        <div className="text-center py-8">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-3 md:px-6 py-4 md:py-8 max-w-4xl">
       <div className="mb-6 md:mb-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Withdrawal Methods</h1>
-            <p className="text-gray-600 mt-1 md:mt-2 text-sm md:text-base">Manage your withdrawal methods and preferences</p>
-          </div>
-          <Dialog open={isAddingMethod} onOpenChange={setIsAddingMethod}>
-            <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Method
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add Withdrawal Method</DialogTitle>
-                <DialogDescription>
-                  Choose a withdrawal method to add to your account
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="methodType">Method Type</Label>
-                  <Select value={selectedType} onValueChange={setSelectedType}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select withdrawal method" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="bank">Bank Account</SelectItem>
-                      <SelectItem value="paypal">PayPal</SelectItem>
-                      <SelectItem value="crypto">Cryptocurrency</SelectItem>
-                      <SelectItem value="mobile">Mobile Wallet</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                {selectedType === "bank" && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="accountNumber">Account Number</Label>
-                      <Input id="accountNumber" placeholder="Enter account number" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="routingNumber">Routing Number</Label>
-                      <Input id="routingNumber" placeholder="Enter routing number" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="bankName">Bank Name</Label>
-                      <Input id="bankName" placeholder="Enter bank name" />
-                    </div>
-                  </>
-                )}
-                
-                {selectedType === "paypal" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="paypalEmail">PayPal Email</Label>
-                    <Input id="paypalEmail" type="email" placeholder="Enter PayPal email" />
-                  </div>
-                )}
-                
-                {selectedType === "crypto" && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="cryptoType">Cryptocurrency</Label>
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select cryptocurrency" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="bitcoin">Bitcoin (BTC)</SelectItem>
-                          <SelectItem value="ethereum">Ethereum (ETH)</SelectItem>
-                          <SelectItem value="usdt">Tether (USDT)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="walletAddress">Wallet Address</Label>
-                      <Input id="walletAddress" placeholder="Enter wallet address" />
-                    </div>
-                  </>
-                )}
-                
-                {selectedType === "mobile" && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="mobileProvider">Mobile Wallet</Label>
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select mobile wallet" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="paytm">Paytm</SelectItem>
-                          <SelectItem value="googlepay">Google Pay</SelectItem>
-                          <SelectItem value="phonepe">PhonePe</SelectItem>
-                          <SelectItem value="amazonpay">Amazon Pay</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="mobileNumber">Mobile Number</Label>
-                      <Input id="mobileNumber" placeholder="Enter mobile number" />
-                    </div>
-                  </>
-                )}
-              </div>
-              
-              <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setIsAddingMethod(false)}>
-                  Cancel
-                </Button>
-                <Button onClick={handleAddMethod} disabled={!selectedType}>
-                  Add Method
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+        <h1 className="text-2xl md:text-3xl font-bold">Withdrawal Methods</h1>
+        <p className="text-muted-foreground mt-1 md:mt-2 text-sm md:text-base">
+          Your payment methods for withdrawals
+        </p>
       </div>
 
-      <div className="space-y-4">
-        {methods.map((method) => {
-          const IconComponent = getMethodIcon(method.type);
-          return (
-            <Card key={method.id} className="relative">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <IconComponent className="h-6 w-6 text-blue-600" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">{method.name}</CardTitle>
-                      <CardDescription className="text-gray-600">
-                        {method.details}
-                      </CardDescription>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    {method.isDefault && (
-                      <Badge className="bg-green-100 text-green-800">Default</Badge>
-                    )}
-                    <Badge 
-                      variant={method.verified ? "default" : "secondary"}
-                      className={method.verified ? "bg-blue-100 text-blue-800" : ""}
-                    >
-                      {method.verified ? "Verified" : "Pending"}
-                    </Badge>
-                  </div>
+      {/* Earning Schedule Information */}
+      <Alert className="mb-6 border-primary/20 bg-primary/5">
+        <Info className="h-4 w-4 text-primary" />
+        <AlertDescription className="text-sm">
+          <strong>Automatic Withdrawal Schedule:</strong> Your earnings from the 1st to the end of each month will be added to your balance on the 1st of the following month. 
+          You can withdraw your balance between the 26th and 31st of each month. For example, earnings from September 1-30 will be added to your balance on October 1st, 
+          and you can withdraw them between October 26-31.
+        </AlertDescription>
+      </Alert>
+
+      {/* Bank Account Details */}
+      {hasBankDetails ? (
+        <Card className="mb-6">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Landmark className="h-6 w-6 text-primary" />
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex justify-between items-center">
-                  <div className="text-sm text-gray-600">
-                    Added on March 15, 2024
-                  </div>
-                  <div className="flex space-x-2">
-                    {!method.isDefault && (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleSetDefault(method.id)}
-                      >
-                        Set as Default
-                      </Button>
-                    )}
-                    <Button variant="outline" size="sm">
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => handleDelete(method.id)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                <div>
+                  <CardTitle className="text-lg">Bank Account</CardTitle>
+                  <CardDescription>
+                    Your registered bank account for withdrawals
+                  </CardDescription>
                 </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+              </div>
+              <Badge className="bg-success/10 text-success border-success/20">
+                Verified
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Account Holder</label>
+                <p className="text-sm font-medium mt-1">{userProfile?.bank_account_holder || 'N/A'}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Account Number</label>
+                <p className="text-sm font-medium font-mono mt-1">****{userProfile?.bank_account_number?.slice(-4)}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Bank Name</label>
+                <p className="text-sm font-medium mt-1">{userProfile?.bank_name}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Routing/IFSC Code</label>
+                <p className="text-sm font-medium font-mono mt-1">{userProfile?.bank_routing_number || 'N/A'}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-muted-foreground">Account Type</label>
+                <p className="text-sm font-medium capitalize mt-1">{userProfile?.bank_account_type || 'N/A'}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="mb-6">
+          <CardContent className="py-8 text-center">
+            <Wallet className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No Payment Method Added</h3>
+            <p className="text-muted-foreground text-sm mb-4">
+              Please complete your KYC verification and add your bank details to receive withdrawals.
+            </p>
+            <Button onClick={() => window.location.href = '/user/complete-kyc'}>
+              Complete KYC Verification
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <Separator className="my-8" />
 
       <Card>
         <CardHeader>
           <CardTitle>Withdrawal Settings</CardTitle>
-          <CardDescription>Configure your withdrawal preferences</CardDescription>
+          <CardDescription>Platform withdrawal policies</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="minWithdrawal">Minimum Withdrawal Amount</Label>
               <Input id="minWithdrawal" value="$10.00" disabled />

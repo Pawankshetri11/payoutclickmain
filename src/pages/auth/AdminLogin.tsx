@@ -169,7 +169,7 @@ export default function AdminLogin() {
               Need user access?{" "}
               <Button 
                 variant="link" 
-                onClick={() => navigate("/login")}
+                onClick={() => navigate("/auth")}
                 className="p-0 h-auto font-medium text-blue-600 hover:text-blue-800"
               >
                 User Login

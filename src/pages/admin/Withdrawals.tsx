@@ -29,12 +29,16 @@ import {
   Settings,
 } from "lucide-react";
 import { WithdrawalLimitsModal } from "./WithdrawalLimitsModal";
+import { ApproveWithdrawalModal } from "@/components/admin/ApproveWithdrawalModal";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const Withdrawals = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [limitsModalOpen, setLimitsModalOpen] = useState(false);
-  const { withdrawals, loading, updateWithdrawalStatus } = useWithdrawals();
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [selectedWithdrawal, setSelectedWithdrawal] = useState<any>(null);
+  const { withdrawals, loading, refetch } = useWithdrawals();
 
   // Calculate stats from real data
   const now = new Date();
@@ -112,6 +116,28 @@ const Withdrawals = () => {
         return <ArrowDownToLine className="h-4 w-4" />;
       default:
         return <CreditCard className="h-4 w-4" />;
+    }
+  };
+
+  const handleApproveClick = (withdrawal: any) => {
+    setSelectedWithdrawal(withdrawal);
+    setApproveModalOpen(true);
+  };
+
+  const handleReject = async (withdrawalId: string) => {
+    try {
+      const { error } = await supabase
+        .from('transactions')
+        .update({ status: 'failed' })
+        .eq('id', withdrawalId);
+
+      if (error) throw error;
+
+      toast.success('Withdrawal rejected');
+      refetch();
+    } catch (error: any) {
+      console.error('Error rejecting withdrawal:', error);
+      toast.error('Failed to reject withdrawal');
     }
   };
 
@@ -314,7 +340,7 @@ const Withdrawals = () => {
                                   variant="ghost" 
                                   size="sm" 
                                   className="text-success hover:text-success"
-                                  onClick={() => updateWithdrawalStatus(withdrawal.id, 'approved')}
+                                  onClick={() => handleApproveClick(withdrawal)}
                                 >
                                   Approve
                                 </Button>
@@ -322,7 +348,7 @@ const Withdrawals = () => {
                                   variant="ghost" 
                                   size="sm" 
                                   className="text-destructive hover:text-destructive"
-                                  onClick={() => updateWithdrawalStatus(withdrawal.id, 'rejected')}
+                                  onClick={() => handleReject(withdrawal.id)}
                                 >
                                   Reject
                                 </Button>
@@ -345,6 +371,16 @@ const Withdrawals = () => {
         open={limitsModalOpen}
         onOpenChange={setLimitsModalOpen}
       />
+
+      {/* Approve Withdrawal Modal */}
+      {selectedWithdrawal && (
+        <ApproveWithdrawalModal
+          open={approveModalOpen}
+          onOpenChange={setApproveModalOpen}
+          withdrawal={selectedWithdrawal}
+          onSuccess={refetch}
+        />
+      )}
     </div>
   );
 };

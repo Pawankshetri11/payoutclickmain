@@ -35,9 +35,11 @@ export default function WithdrawalRequest() {
 
   const [currentBalance, setCurrentBalance] = useState(0);
   const [kycStatus, setKycStatus] = useState<string>("");
+  const [userWithdrawals, setUserWithdrawals] = useState<any[]>([]);
 
   useEffect(() => {
     fetchUserData();
+    fetchUserWithdrawals();
   }, [user]);
 
   const fetchUserData = async () => {
@@ -51,10 +53,34 @@ export default function WithdrawalRequest() {
         .maybeSingle();
 
       if (error) throw error;
-      setCurrentBalance(data?.balance || 0);
+      const balance = data?.balance || 0;
+      setCurrentBalance(balance);
       setKycStatus(data?.kyc_status || 'pending');
+      
+      // Auto-populate amount with current balance
+      if (balance > 0) {
+        setWithdrawalForm(prev => ({ ...prev, amount: balance.toString() }));
+      }
     } catch (error: any) {
       console.error('Error fetching user data:', error);
+    }
+  };
+
+  const fetchUserWithdrawals = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('type', 'withdrawal')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setUserWithdrawals(data || []);
+    } catch (error: any) {
+      console.error('Error fetching withdrawals:', error);
     }
   };
   const minWithdrawal = 100;
@@ -62,39 +88,12 @@ export default function WithdrawalRequest() {
 
   const withdrawalMethods = [
     {
-      id: "bank_1",
+      id: "bank",
       type: "Bank Transfer",
-      name: "HDFC Bank ****1234",
+      name: "Bank Account",
       icon: CreditCard,
       fee: "2%",
       processingTime: "1-2 business days",
-    },
-    {
-      id: "paypal_1", 
-      type: "PayPal",
-      name: "john***@email.com",
-      icon: DollarSign,
-      fee: "3%",
-      processingTime: "Instant",
-    },
-  ];
-
-  const recentWithdrawals = [
-    {
-      id: "WTH-001",
-      amount: 500,
-      method: "Bank Transfer",
-      status: "completed",
-      date: "2024-01-10",
-      netAmount: 450,
-    },
-    {
-      id: "WTH-002", 
-      amount: 300,
-      method: "PayPal",
-      status: "pending",
-      date: "2024-01-15",
-      netAmount: 270,
     },
   ];
 
@@ -158,29 +157,33 @@ export default function WithdrawalRequest() {
         return;
       }
       
-      // For now use mock submission since withdrawals table doesn't exist yet
-      // TODO: Create withdrawals table in Supabase schema
-      console.log("Submitting withdrawal:", {
-        user_id: user.id,
-        amount: amount,
-        method: withdrawalForm.method,
-        account_id: withdrawalForm.accountId || selectedMethod?.name,
-        company_fee: fees.companyFee,
-        processing_fee: fees.processingFee,
-        total_fee: fees.totalFee,
-        net_amount: fees.netAmount,
-        status: 'pending',
-        requested_at: new Date().toISOString()
-      });
+      // Create withdrawal transaction
+      const { error: insertError } = await supabase
+        .from('transactions')
+        .insert({
+          user_id: user.id,
+          type: 'withdrawal',
+          amount: amount,
+          method: withdrawalForm.method,
+          status: 'pending',
+          description: `Withdrawal request - ${selectedMethod?.type}`
+        });
+
+      if (insertError) throw insertError;
+
+      // Deduct from user balance
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ balance: currentBalance - amount })
+        .eq('user_id', user.id);
+
+      if (updateError) throw updateError;
 
       toast.success("Withdrawal request submitted successfully! It will be processed within 1-2 business days.");
       
-      // Reset form
-      setWithdrawalForm({
-        amount: "",
-        method: "",
-        accountId: "",
-      });
+      // Refresh data
+      await fetchUserData();
+      await fetchUserWithdrawals();
       
     } catch (error: any) {
       console.error("Withdrawal error:", error);
@@ -379,23 +382,24 @@ export default function WithdrawalRequest() {
           <CardDescription>Your withdrawal history</CardDescription>
         </CardHeader>
         <CardContent>
-          {recentWithdrawals.length > 0 ? (
+          {userWithdrawals.length > 0 ? (
             <div className="space-y-4">
-              {recentWithdrawals.map((withdrawal) => (
+              {userWithdrawals.map((withdrawal) => (
                 <div key={withdrawal.id} className="flex items-center justify-between p-4 border border-border/50 rounded-lg">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-lg bg-primary/10">
                       <ArrowDownToLine className="h-4 w-4 text-primary" />
                     </div>
                     <div>
-                      <p className="font-medium text-foreground">{withdrawal.id}</p>
-                      <p className="text-sm text-muted-foreground">{withdrawal.method} • {withdrawal.date}</p>
+                      <p className="font-medium text-foreground">{withdrawal.id.substring(0, 8)}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {withdrawal.method || 'Bank Transfer'} • {new Date(withdrawal.created_at).toLocaleDateString()}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-right">
                       <p className="font-medium text-foreground">₹{withdrawal.amount}</p>
-                      <p className="text-sm text-muted-foreground">Net: ₹{withdrawal.netAmount}</p>
                     </div>
                     {getStatusBadge(withdrawal.status)}
                   </div>

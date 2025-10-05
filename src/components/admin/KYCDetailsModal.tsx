@@ -90,6 +90,17 @@ export function KYCDetailsModal({ open, onOpenChange, user }: KYCDetailsModalPro
 
   // KYC details from database or mock data for demonstration
   const kycData = user.kyc_data || user.kyc_details;
+  
+  // Helper to extract address string from potentially nested object
+  const getAddressString = (addressData: any) => {
+    if (typeof addressData === 'string') return addressData;
+    if (addressData && typeof addressData === 'object') {
+      const { address, city, state, zip, country } = addressData;
+      return `${address || ''}, ${city || ''}, ${state || ''} ${zip || ''}, ${country || ''}`.replace(/,\s*,/g, ',').trim();
+    }
+    return "123 Main Street, Andheri West";
+  };
+  
   const kycDetails = kycData || {
     fullName: user.name,
     dateOfBirth: "1990-05-15",
@@ -108,6 +119,10 @@ export function KYCDetailsModal({ open, onOpenChange, user }: KYCDetailsModalPro
     },
     submittedAt: user.kyc_submitted_at || "2024-01-15 10:30:00"
   };
+  
+  // Extract address properly
+  const addressString = getAddressString(kycData?.address || kycDetails.address);
+  const pincodeString = kycData?.address?.zip || kycDetails.pincode || "N/A";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -194,11 +209,11 @@ export function KYCDetailsModal({ open, onOpenChange, user }: KYCDetailsModalPro
                 <div className="space-y-3">
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Address</label>
-                    <p className="text-sm font-medium">{kycDetails.address}</p>
+                    <p className="text-sm font-medium">{addressString}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">PIN Code</label>
-                    <p className="text-sm font-medium">{kycDetails.pincode}</p>
+                    <p className="text-sm font-medium">{pincodeString}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-muted-foreground">Aadhar Number</label>

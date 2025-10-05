@@ -146,15 +146,23 @@ export default function TaskDetail() {
     try {
       let imageUrl = "";
       
+      if (!user) {
+        toast.error("You must be logged in");
+        return;
+      }
+
       // Upload image
       const fileExt = submittedImage.name.split('.').pop();
-      const fileName = `${Date.now()}.${fileExt}`;
+      const fileName = `${user.id}/${task.id}/${Date.now()}.${fileExt}`;
       
       const { error: uploadError } = await supabase.storage
         .from('task-submissions')
         .upload(fileName, submittedImage);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw new Error(uploadError.message || 'Failed to upload image');
+      }
       
       const { data: { publicUrl } } = supabase.storage
         .from('task-submissions')
@@ -172,7 +180,7 @@ export default function TaskDetail() {
       navigate("/user/my-tasks");
     } catch (error: any) {
       console.error('Error submitting task:', error);
-      toast.error("Failed to submit task");
+      toast.error(error.message || "Failed to submit task");
     } finally {
       setIsSubmitting(false);
     }

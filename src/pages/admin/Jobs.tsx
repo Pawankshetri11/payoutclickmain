@@ -32,7 +32,10 @@ import {
   DollarSign,
   Code,
   Image as ImageIcon,
-  Users
+  Users,
+  Trash2,
+  Pause,
+  Play
 } from "lucide-react";
 
 interface Job {
@@ -229,6 +232,46 @@ const Jobs = () => {
     } catch (error: any) {
       console.error('Error updating job:', error);
       toast.error('Failed to update job');
+    }
+  };
+
+  const handleDeleteJob = async (jobId: string) => {
+    if (!confirm('Are you sure you want to delete this job? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('jobs')
+        .delete()
+        .eq('id', jobId);
+
+      if (error) throw error;
+
+      toast.success('Job deleted successfully!');
+      fetchJobs();
+    } catch (error: any) {
+      console.error('Error deleting job:', error);
+      toast.error('Failed to delete job');
+    }
+  };
+
+  const handleToggleStatus = async (jobId: string, currentStatus: string) => {
+    try {
+      const newStatus = currentStatus === 'active' ? 'paused' : 'active';
+      
+      const { error } = await supabase
+        .from('jobs')
+        .update({ status: newStatus })
+        .eq('id', jobId);
+
+      if (error) throw error;
+
+      toast.success(`Job ${newStatus === 'active' ? 'activated' : 'paused'} successfully!`);
+      fetchJobs();
+    } catch (error: any) {
+      console.error('Error updating job status:', error);
+      toast.error('Failed to update job status');
     }
   };
 
@@ -654,117 +697,142 @@ const Jobs = () => {
               <TabsTrigger value="draft">Draft</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="all" className="space-y-4">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Job Details</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Reward</TableHead>
-                    <TableHead>Progress</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
-                        Loading jobs...
-                      </TableCell>
-                    </TableRow>
-                  ) : jobs.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        No jobs found. Create your first job to get started.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    jobs.map((job) => (
-                      <TableRow key={job.id} className="hover:bg-accent/50">
-                        <TableCell>
-                          <div>
-                            <p className="font-medium text-foreground">{job.title}</p>
-                            <p className="text-sm text-muted-foreground">#{job.id}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {getJobTypeIcon(job.type)}
-                            <span className="capitalize">{job.type}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{job.category}</Badge>
-                        </TableCell>
-                        <TableCell className="font-medium text-primary">₹{job.amount}</TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 text-sm">
-                              <Users className="h-3 w-3" />
-                              <span>{job.completed} / {job.vacancy}</span>
-                            </div>
-                            <div className="w-full bg-muted rounded-full h-1.5">
-                              <div 
-                                className="bg-primary h-1.5 rounded-full transition-all" 
-                                style={{ width: `${job.vacancy > 0 ? (job.completed / job.vacancy) * 100 : 0}%` }}
-                              />
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {getStatusBadge(job.status)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => {
-                                setSelectedJob(job);
-                                setViewJobModalOpen(true);
-                              }}
-                            >
-                              <Eye className="h-4 w-4 mr-1" />
-                              View
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => {
-                                setSelectedJob(job);
-                                setEditJobData({
-                                  title: job.title,
-                                  description: job.description,
-                                  category: job.category,
-                                  type: job.type,
-                                  amount: job.amount.toString(),
-                                  vacancy: job.vacancy.toString(),
-                                  requirements: ""
-                                });
-                                setEditJobModalOpen(true);
-                              }}
-                            >
-                              <Edit className="h-4 w-4 mr-1" />
-                              Edit
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => window.location.href = `/admin/jobs/${job.id}/codes`}
-                            >
-                              <Code className="h-4 w-4 mr-1" />
-                              Codes
-                            </Button>
-                          </div>
-                        </TableCell>
+            {['all', 'active', 'completed', 'paused', 'draft'].map((tabValue) => {
+              const filteredJobs = tabValue === 'all' 
+                ? jobs.filter(job => searchTerm === '' || job.title.toLowerCase().includes(searchTerm.toLowerCase()) || job.category.toLowerCase().includes(searchTerm.toLowerCase()))
+                : jobs.filter(job => 
+                    job.status === tabValue && 
+                    (searchTerm === '' || job.title.toLowerCase().includes(searchTerm.toLowerCase()) || job.category.toLowerCase().includes(searchTerm.toLowerCase()))
+                  );
+
+              return (
+                <TabsContent key={tabValue} value={tabValue} className="space-y-4">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Job Details</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Reward</TableHead>
+                        <TableHead>Progress</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </TabsContent>
+                    </TableHeader>
+                    <TableBody>
+                      {loading ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-8">
+                            Loading jobs...
+                          </TableCell>
+                        </TableRow>
+                      ) : filteredJobs.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                            {tabValue === 'all' ? 'No jobs found. Create your first job to get started.' : `No ${tabValue} jobs found.`}
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredJobs.map((job) => (
+                          <TableRow key={job.id} className="hover:bg-accent/50">
+                            <TableCell>
+                              <div>
+                                <p className="font-medium text-foreground">{job.title}</p>
+                                <p className="text-sm text-muted-foreground">#{job.id.substring(0, 8)}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {getJobTypeIcon(job.type)}
+                                <span className="capitalize">{job.type}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{job.category}</Badge>
+                            </TableCell>
+                            <TableCell className="font-medium text-primary">₹{job.amount}</TableCell>
+                            <TableCell>
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2 text-sm">
+                                  <Users className="h-3 w-3" />
+                                  <span>{job.completed} / {job.vacancy}</span>
+                                </div>
+                                <div className="w-full bg-muted rounded-full h-1.5">
+                                  <div 
+                                    className="bg-primary h-1.5 rounded-full transition-all" 
+                                    style={{ width: `${job.vacancy > 0 ? (job.completed / job.vacancy) * 100 : 0}%` }}
+                                  />
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {getStatusBadge(job.status)}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-1 flex-wrap">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedJob(job);
+                                    setViewJobModalOpen(true);
+                                  }}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedJob(job);
+                                    setEditJobData({
+                                      title: job.title,
+                                      description: job.description,
+                                      category: job.category,
+                                      type: job.type,
+                                      amount: job.amount.toString(),
+                                      vacancy: job.vacancy.toString(),
+                                      requirements: ""
+                                    });
+                                    setEditJobModalOpen(true);
+                                  }}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => window.location.href = `/admin/jobs/${job.id}/codes`}
+                                >
+                                  <Code className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => handleToggleStatus(job.id, job.status)}
+                                  title={job.status === 'active' ? 'Pause Job' : 'Activate Job'}
+                                >
+                                  {job.status === 'active' ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => handleDeleteJob(job.id)}
+                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  title="Delete Job"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </TabsContent>
+              );
+            })}
           </Tabs>
         </CardContent>
       </Card>

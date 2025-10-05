@@ -12,7 +12,8 @@ import {
   LogOut,
   Mail,
   Gift,
-  FileText
+  FileText,
+  Building2
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -94,6 +95,11 @@ const navigationItems = [
     icon: FileText,
   },
   {
+    title: "Business Profiles",
+    url: "/review-profiles",
+    icon: Building2,
+  },
+  {
     title: "Settings",
     url: "/admin/settings",
     icon: Settings,
@@ -108,13 +114,13 @@ export function AppSidebar() {
 
   const handleLogout = async () => {
     try {
-      localStorage.removeItem('is_admin');
+      localStorage.removeItem("is_admin");
       await signOut();
-      toast.success('Logged out successfully');
-      navigate('/admin/login');
+      toast.success("Logged out successfully");
+      navigate("/admin-login"); // ✅ Updated redirect path
     } catch (error) {
-      console.error('Logout error:', error);
-      toast.error('Failed to logout');
+      console.error("Logout error:", error);
+      toast.error("Failed to logout");
     }
   };
 
@@ -173,7 +179,7 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        
+
         {/* Logout Button */}
         <div className="mt-auto p-2 border-t border-border/50">
           <Button 

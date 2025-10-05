@@ -483,33 +483,31 @@ export function KYCDetailsModal({ open, onOpenChange, user }: KYCDetailsModalPro
           </div>
         )}
 
-        <DialogFooter>
-          {user.kyc_status === 'pending' && (
-            <>
-              <Button
-                variant="destructive"
-                onClick={handleReject}
-                disabled={processing}
-              >
-                Reject
-              </Button>
-              <Button
-                onClick={handleApprove}
-                disabled={processing}
-              >
-                Approve
-              </Button>
-            </>
-          )}
-          {user.kyc_status === 'verified' && (
-            <Button
-              variant="outline"
-              onClick={handleRequestReverification}
-              disabled={processing}
-            >
-              Request Re-verification
-            </Button>
-          )}
+        <DialogFooter className="gap-2 flex-wrap">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={handleRequestReverification} 
+            disabled={processing}
+          >
+            Request Re-verification
+          </Button>
+          <Button 
+            variant="destructive"
+            onClick={handleReject}
+            disabled={processing}
+          >
+            Reject
+          </Button>
+          <Button
+            onClick={handleApprove}
+            disabled={processing}
+            className="bg-success hover:bg-success/90"
+          >
+            Approve
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -32,6 +32,7 @@ import { KYCDetailsModal } from "@/components/admin/KYCDetailsModal";
 import { UserEditModal } from "./UserEditModal";
 import { AddUserModal } from "@/components/admin/AddUserModal";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const Users = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -41,11 +42,21 @@ const Users = () => {
   const [addUserModalOpen, setAddUserModalOpen] = useState(false);
   const { users, loading, updateUserStatus, updateKYCStatus, refetch } = useUsers();
 
-  const handleLoginAsUser = async (userId: string) => {
-    const user = users.find(u => u.user_id === userId);
-    if (!user) return;
+  const handleLoginAsUser = async (userId: string, userEmail: string) => {
+    // Show a dialog with user credentials for admin to login manually
+    const message = `To login as this user:\n\nEmail: ${userEmail}\n\nOpen a new incognito window and use their email to login.`;
     
-    toast.info(`To login as ${user.name}: Use their email (${user.email}) to login. Admins cannot directly impersonate users for security.`);
+    // Copy email to clipboard
+    try {
+      await navigator.clipboard.writeText(userEmail);
+      toast.success(`Email copied to clipboard!\n\n${message}`, {
+        duration: 5000,
+      });
+    } catch (error) {
+      toast.info(message, {
+        duration: 5000,
+      });
+    }
   };
 
 
@@ -271,7 +282,7 @@ const Users = () => {
                             <Button 
                               variant="ghost" 
                               size="sm"
-                              onClick={() => handleLoginAsUser(user.user_id)}
+                              onClick={() => handleLoginAsUser(user.user_id, user.email)}
                             >
                               <LogIn className="h-4 w-4 mr-1" />
                               Login
@@ -339,7 +350,7 @@ const Users = () => {
                             <Button variant="ghost" size="sm" onClick={() => { setSelectedUser(user); setEditModalOpen(true); }}>
                               <Edit className="h-4 w-4 mr-1" />Edit
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleLoginAsUser(user.user_id)}>
+                            <Button variant="ghost" size="sm" onClick={() => handleLoginAsUser(user.user_id, user.email)}>
                               <LogIn className="h-4 w-4 mr-1" />Login
                             </Button>
                           </div>
@@ -405,7 +416,7 @@ const Users = () => {
                             <Button variant="ghost" size="sm" onClick={() => { setSelectedUser(user); setEditModalOpen(true); }}>
                               <Edit className="h-4 w-4 mr-1" />Edit
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleLoginAsUser(user.user_id)}>
+                            <Button variant="ghost" size="sm" onClick={() => handleLoginAsUser(user.user_id, user.email)}>
                               <LogIn className="h-4 w-4 mr-1" />Login
                             </Button>
                           </div>
@@ -471,7 +482,7 @@ const Users = () => {
                             <Button variant="ghost" size="sm" onClick={() => { setSelectedUser(user); setEditModalOpen(true); }}>
                               <Edit className="h-4 w-4 mr-1" />Edit
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleLoginAsUser(user.user_id)}>
+                            <Button variant="ghost" size="sm" onClick={() => handleLoginAsUser(user.user_id, user.email)}>
                               <LogIn className="h-4 w-4 mr-1" />Login
                             </Button>
                           </div>
@@ -537,7 +548,7 @@ const Users = () => {
                             <Button variant="ghost" size="sm" onClick={() => { setSelectedUser(user); setEditModalOpen(true); }}>
                               <Edit className="h-4 w-4 mr-1" />Edit
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleLoginAsUser(user.user_id)}>
+                            <Button variant="ghost" size="sm" onClick={() => handleLoginAsUser(user.user_id, user.email)}>
                               <LogIn className="h-4 w-4 mr-1" />Login
                             </Button>
                           </div>
@@ -603,7 +614,7 @@ const Users = () => {
                             <Button variant="ghost" size="sm" onClick={() => { setSelectedUser(user); setEditModalOpen(true); }}>
                               <Edit className="h-4 w-4 mr-1" />Edit
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleLoginAsUser(user.user_id)}>
+                            <Button variant="ghost" size="sm" onClick={() => handleLoginAsUser(user.user_id, user.email)}>
                               <LogIn className="h-4 w-4 mr-1" />Login
                             </Button>
                           </div>
@@ -671,7 +682,7 @@ const Users = () => {
                             <Button variant="ghost" size="sm" onClick={() => { setSelectedUser(user); setEditModalOpen(true); }}>
                               <Edit className="h-4 w-4 mr-1" />Edit
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleLoginAsUser(user.user_id)}>
+                            <Button variant="ghost" size="sm" onClick={() => handleLoginAsUser(user.user_id, user.email)}>
                               <LogIn className="h-4 w-4 mr-1" />Login
                             </Button>
                           </div>

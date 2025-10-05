@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,7 +17,8 @@ export default function CompleteKYC() {
   const { user } = useAuth();
   const { profile, refetch } = useProfile();
   const [currentStep, setCurrentStep] = useState(1);
-  const [kycStatus, setKycStatus] = useState<"pending" | "verified" | "rejected">(profile?.kyc_status || "pending");
+  // Always sync kycStatus with profile to reflect admin changes
+  const kycStatus = profile?.kyc_status || "unverified";
   const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
     step1: { firstName: "", lastName: "", dob: "", gender: "", phone: "" },
@@ -25,6 +26,32 @@ export default function CompleteKYC() {
     step3: { address: "", city: "", state: "", zip: "", country: "", proof: null, proofUrl: "" },
     step4: { accountHolder: "", accountNumber: "", routing: "", bankName: "", accountType: "" }
   });
+
+  // Real-time subscription for KYC status updates
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel('kyc-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `user_id=eq.${user.id}`
+        },
+        () => {
+          // Refetch profile when admin updates KYC status
+          refetch();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, refetch]);
 
   const frontDocRef = useRef<HTMLInputElement>(null);
   const backDocRef = useRef<HTMLInputElement>(null);
@@ -160,9 +187,8 @@ export default function CompleteKYC() {
 
       if (error) throw error;
 
-      setKycStatus("pending");
       toast.success("KYC documents submitted for verification");
-      refetch();
+      await refetch();
     } catch (error: any) {
       console.error('KYC submission error:', error);
       toast.error("Failed to submit KYC documents");
@@ -244,7 +270,6 @@ export default function CompleteKYC() {
               </div>
               <Button 
                 onClick={() => {
-                  setKycStatus("pending");
                   setCurrentStep(1);
                 }}
                 className="mt-2"

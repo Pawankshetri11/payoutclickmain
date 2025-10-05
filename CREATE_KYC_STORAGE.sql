@@ -1,4 +1,5 @@
 -- Create storage bucket for KYC documents
+-- IMPORTANT: This bucket MUST be created or KYC image uploads will fail with "Bucket not found" error
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('kyc-documents', 'kyc-documents', true)
 ON CONFLICT (id) DO NOTHING;

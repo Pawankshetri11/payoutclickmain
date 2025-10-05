@@ -10,8 +10,11 @@ ADD COLUMN IF NOT EXISTS kyc_submitted_at TIMESTAMPTZ,
 ADD COLUMN IF NOT EXISTS kyc_data JSONB,
 ADD COLUMN IF NOT EXISTS referred_by UUID REFERENCES auth.users(id);
 
--- Create referrals table if it doesn't exist
-CREATE TABLE IF NOT EXISTS public.referrals (
+-- Drop existing referrals table if it exists (to recreate with correct schema)
+DROP TABLE IF EXISTS public.referrals CASCADE;
+
+-- Create referrals table with correct schema
+CREATE TABLE public.referrals (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   referrer_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   referred_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -48,6 +51,14 @@ VALUES
   ('kyc-documents', 'kyc-documents', false),
   ('avatars', 'avatars', true)
 ON CONFLICT (id) DO NOTHING;
+
+-- Drop existing storage policies if they exist
+DROP POLICY IF EXISTS "Users can upload their own KYC documents" ON storage.objects;
+DROP POLICY IF EXISTS "Users can view their own KYC documents" ON storage.objects;
+DROP POLICY IF EXISTS "Admins can view all KYC documents" ON storage.objects;
+DROP POLICY IF EXISTS "Users can upload their own avatars" ON storage.objects;
+DROP POLICY IF EXISTS "Users can update their own avatars" ON storage.objects;
+DROP POLICY IF EXISTS "Anyone can view avatars" ON storage.objects;
 
 -- Storage policies for KYC documents
 CREATE POLICY "Users can upload their own KYC documents"
@@ -90,7 +101,7 @@ CREATE POLICY "Anyone can view avatars"
   ON storage.objects FOR SELECT
   USING (bucket_id = 'avatars');
 
--- Create index for faster referral lookups
+-- Create indexes for faster referral lookups
 CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON public.referrals(referrer_id);
 CREATE INDEX IF NOT EXISTS idx_referrals_referred ON public.referrals(referred_id);
 CREATE INDEX IF NOT EXISTS idx_profiles_referred_by ON public.profiles(referred_by);
@@ -103,6 +114,8 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS set_referrals_updated_at ON public.referrals;
 
 CREATE TRIGGER set_referrals_updated_at
   BEFORE UPDATE ON public.referrals

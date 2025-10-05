@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { User, Mail, Phone, Shield, DollarSign, Calendar } from "lucide-react";
+import { User, Mail, Phone, Shield, DollarSign, Calendar, Plus, Minus } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -32,6 +32,9 @@ export function UserEditModal({ open, onOpenChange, user, onUserUpdate }: UserEd
     balance: "",
   });
 
+  const [adjustAmount, setAdjustAmount] = useState("");
+  const [loading, setLoading] = useState(false);
+
   useEffect(() => {
     if (user) {
       setEditForm({
@@ -39,36 +42,73 @@ export function UserEditModal({ open, onOpenChange, user, onUserUpdate }: UserEd
         email: user.email || "",
         phone: user.phone || "",
         status: user.status || "",
-        kyc: user.kyc || "",
-        balance: user.balance || "",
+        kyc: user.kyc_status || "",
+        balance: user.balance?.toString() || "0",
       });
     }
   }, [user]);
 
   const handleSaveChanges = async () => {
     try {
+      setLoading(true);
       const { error } = await supabase
-        .from('profiles')
+        .from("profiles")
         .update({
           name: editForm.name,
           email: editForm.email,
           phone: editForm.phone,
-          status: editForm.status as 'active' | 'pending' | 'suspended',
-          kyc_status: editForm.kyc as 'pending' | 'verified' | 'rejected',
+          status: editForm.status as "active" | "pending" | "suspended",
+          kyc_status: editForm.kyc as "pending" | "verified" | "rejected",
           balance: parseFloat(editForm.balance) || 0,
         })
-        .eq('user_id', user.user_id);
+        .eq("user_id", user.user_id);
 
       if (error) throw error;
-      
+
       toast.success("User updated successfully!");
-      if (onUserUpdate) {
-        onUserUpdate();
-      }
+      onUserUpdate?.();
       onOpenChange(false);
     } catch (error: any) {
       console.error("Error updating user:", error);
       toast.error("Failed to update user");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBalanceChange = async (type: "add" | "remove") => {
+    const amount = parseFloat(adjustAmount);
+    if (!amount || amount <= 0) {
+      toast.error("Please enter a valid amount");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const currentBalance = parseFloat(editForm.balance) || 0;
+      const newBalance =
+        type === "add"
+          ? currentBalance + amount
+          : Math.max(0, currentBalance - amount);
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({ balance: newBalance })
+        .eq("user_id", user.user_id);
+
+      if (error) throw error;
+
+      setEditForm({ ...editForm, balance: newBalance.toString() });
+      setAdjustAmount("");
+
+      toast.success(
+        `₹${amount} ${type === "add" ? "added to" : "removed from"} balance`
+      );
+    } catch (error: any) {
+      console.error("Error updating balance:", error);
+      toast.error("Failed to update balance");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -108,55 +148,51 @@ export function UserEditModal({ open, onOpenChange, user, onUserUpdate }: UserEd
             <User className="h-5 w-5" />
             Edit User - {user.name}
           </DialogTitle>
-          <DialogDescription>
-            Update user information and account status
-          </DialogDescription>
+          <DialogDescription>Update user information and manage balance</DialogDescription>
         </DialogHeader>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
           {/* Basic Information */}
           <div className="space-y-4">
             <h3 className="font-semibold text-foreground">Basic Information</h3>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
+              <Label>Full Name</Label>
               <Input
-                id="name"
                 value={editForm.name}
-                onChange={(e) => setEditForm({...editForm, name: e.target.value})}
+                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email Address</Label>
+              <Label>Email Address</Label>
               <Input
-                id="email"
                 type="email"
                 value={editForm.email}
-                onChange={(e) => setEditForm({...editForm, email: e.target.value})}
+                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number</Label>
+              <Label>Phone Number</Label>
               <Input
-                id="phone"
                 value={editForm.phone}
-                onChange={(e) => setEditForm({...editForm, phone: e.target.value})}
+                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
               />
             </div>
           </div>
 
-          {/* Account Status */}
+          {/* Account Status & Balance */}
           <div className="space-y-4">
             <h3 className="font-semibold text-foreground">Account Status</h3>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="status">Account Status</Label>
-              <Select value={editForm.status} onValueChange={(value) => setEditForm({...editForm, status: value})}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+              <Label>Account Status</Label>
+              <Select
+                value={editForm.status}
+                onValueChange={(value) => setEditForm({ ...editForm, status: value })}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="banned">Banned</SelectItem>
@@ -164,17 +200,16 @@ export function UserEditModal({ open, onOpenChange, user, onUserUpdate }: UserEd
                   <SelectItem value="mobile_unverified">Mobile Unverified</SelectItem>
                 </SelectContent>
               </Select>
-              <div className="mt-2">
-                {getStatusBadge(editForm.status)}
-              </div>
+              <div className="mt-2">{getStatusBadge(editForm.status)}</div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="kyc">KYC Status</Label>
-              <Select value={editForm.kyc} onValueChange={(value) => setEditForm({...editForm, kyc: value})}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+              <Label>KYC Status</Label>
+              <Select
+                value={editForm.kyc}
+                onValueChange={(value) => setEditForm({ ...editForm, kyc: value })}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="verified">Verified</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
@@ -182,62 +217,51 @@ export function UserEditModal({ open, onOpenChange, user, onUserUpdate }: UserEd
                   <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
-              <div className="mt-2">
-                {getKycBadge(editForm.kyc)}
-              </div>
+              <div className="mt-2">{getKycBadge(editForm.kyc)}</div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="balance">Account Balance (₹)</Label>
+              <Label>Account Balance (₹)</Label>
               <Input
-                id="balance"
+                type="number"
                 value={editForm.balance}
-                onChange={(e) => setEditForm({...editForm, balance: e.target.value})}
+                onChange={(e) => setEditForm({ ...editForm, balance: e.target.value })}
               />
-            </div>
-          </div>
-        </div>
-
-        {/* User Stats */}
-        <div className="p-4 bg-muted/20 rounded-lg border border-border/50">
-          <h4 className="font-semibold text-foreground mb-3">User Statistics</h4>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-success" />
-              <div>
-                <p className="text-muted-foreground">Total Earnings</p>
-                <p className="font-medium">{user.totalEarnings}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Shield className="h-4 w-4 text-primary" />
-              <div>
-                <p className="text-muted-foreground">Tasks Completed</p>
-                <p className="font-medium">{user.tasksCompleted}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-accent" />
-              <div>
-                <p className="text-muted-foreground">Joined</p>
-                <p className="font-medium">{user.joined}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-warning" />
-              <div>
-                <p className="text-muted-foreground">Rating</p>
-                <p className="font-medium">{user.averageRating}/5</p>
+              <div className="flex items-center gap-2 mt-2">
+                <Input
+                  placeholder="Enter amount"
+                  type="number"
+                  value={adjustAmount}
+                  onChange={(e) => setAdjustAmount(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  variant="default"
+                  onClick={() => handleBalanceChange("add")}
+                  disabled={loading}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => handleBalanceChange("remove")}
+                  disabled={loading}
+                >
+                  <Minus className="h-4 w-4 mr-1" />
+                  Remove
+                </Button>
               </div>
             </div>
           </div>
         </div>
 
+        {/* Bottom buttons */}
         <div className="flex justify-end space-x-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSaveChanges}>
+          <Button onClick={handleSaveChanges} disabled={loading}>
             Save Changes
           </Button>
         </div>

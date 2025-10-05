@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS public.job_codes (
   job_id UUID NOT NULL REFERENCES public.jobs(id) ON DELETE CASCADE,
   code TEXT NOT NULL UNIQUE,
   used BOOLEAN DEFAULT false,
-  used_by UUID REFERENCES public.profiles(user_id) ON DELETE SET NULL,
+  used_by UUID ON DELETE SET NULL,
   used_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -74,18 +74,28 @@ BEGIN
   FROM public.jobs
   WHERE id = p_job_id;
 
-  -- Mark code as used
+  IF v_job_reward IS NULL THEN
+    RETURN QUERY SELECT false, 'Job not found'::TEXT, 0::NUMERIC;
+    RETURN;
+  END IF;
+
+  -- Mark code as used (store user_id from auth.users)
   UPDATE public.job_codes
   SET used = true,
       used_by = p_user_id,
       used_at = NOW()
   WHERE id = v_code_id;
 
-  -- Credit user account
+  -- Credit user account (profiles.user_id references auth.users.id)
   UPDATE public.profiles
-  SET balance = balance + v_job_reward,
-      total_earned = total_earned + v_job_reward
+  SET balance = COALESCE(balance, 0) + v_job_reward,
+      total_earned = COALESCE(total_earned, 0) + v_job_reward
   WHERE user_id = p_user_id;
+
+  -- Check if update was successful
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Profile not found for user_id: %', p_user_id;
+  END IF;
 
   -- Increment job completed count
   UPDATE public.jobs
@@ -93,6 +103,10 @@ BEGIN
   WHERE id = p_job_id;
 
   RETURN QUERY SELECT true, 'Code verified successfully'::TEXT, v_job_reward;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'Error in verify_and_use_code: %', SQLERRM;
+    RETURN QUERY SELECT false, 'Verification failed: ' || SQLERRM, 0::NUMERIC;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

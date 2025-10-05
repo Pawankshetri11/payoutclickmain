@@ -68,7 +68,25 @@ const Categories = () => {
         return;
       }
 
-      const service_id = "CAT-" + Math.floor(100000 + Math.random() * 900000);
+      // Get the highest service_id number to generate next sequential ID
+      const { data: existingCategories } = await (supabase as any)
+        .from("job_categories")
+        .select("service_id")
+        .order("service_id", { ascending: false })
+        .limit(1);
+
+      let nextNumber = 1;
+      if (existingCategories && existingCategories.length > 0) {
+        const lastServiceId = existingCategories[0].service_id;
+        if (lastServiceId && lastServiceId.startsWith("CAT-")) {
+          const lastNumber = parseInt(lastServiceId.replace("CAT-", ""));
+          if (!isNaN(lastNumber)) {
+            nextNumber = lastNumber + 1;
+          }
+        }
+      }
+
+      const service_id = `CAT-${String(nextNumber).padStart(3, "0")}`;
 
       const { error } = await (supabase as any)
         .from("job_categories")

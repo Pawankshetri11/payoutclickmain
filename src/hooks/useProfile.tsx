@@ -17,6 +17,14 @@ interface Profile {
   level: string;
   created_at: string;
   updated_at: string;
+  avatar_url?: string;
+  bank_account_number?: string;
+  bank_name?: string;
+  bank_account_type?: string;
+  bank_routing_number?: string;
+  bank_account_holder?: string;
+  kyc_submitted_at?: string;
+  kyc_data?: any;
 }
 
 export function useProfile() {

@@ -47,15 +47,30 @@ export function useReferral() {
     }
 
     try {
-      // Referral system removed - no dummy data
-      setReferralCode('');
+      // Fetch user's referrals from database
+      const { data: referrals, error } = await supabase
+        .from('referrals')
+        .select('*')
+        .eq('referrer_id', user.id);
+
+      if (error) throw error;
+
+      // Generate referral code if user doesn't have one
+      const code = generateReferralCode(user.id);
+      setReferralCode(code);
+
+      // Calculate stats from fetched data
+      const totalReferrals = referrals?.length || 0;
+      const activeReferrals = referrals?.filter(r => r.status === 'active').length || 0;
+      const totalCommissionEarned = referrals?.reduce((sum, r) => sum + (r.total_commission_earned || 0), 0) || 0;
+
       setReferralStats({
-        totalReferrals: 0,
-        activeReferrals: 0,
-        totalCommissionEarned: 0,
+        totalReferrals,
+        activeReferrals,
+        totalCommissionEarned,
         pendingCommission: 0,
       });
-      setReferredUsers([]);
+      setReferredUsers(referrals || []);
     } catch (error: any) {
       console.error('Error fetching referral data:', error);
       toast.error('Failed to load referral data');
@@ -74,10 +89,22 @@ export function useReferral() {
       const companyCommission = withdrawalAmount * 0.10; // 10%
       const netAmount = withdrawalAmount - referralCommission - companyCommission;
 
-      // In real implementation, this would:
-      // 1. Add commission to referrer's balance
-      // 2. Log the commission transaction
-      // 3. Update withdrawal record with commission details
+      // Update referral commission in database
+      const { error } = await supabase
+        .from('referrals')
+        .update({ 
+          total_commission_earned: supabase.raw(`total_commission_earned + ${referralCommission}`)
+        })
+        .eq('referrer_id', referrerId)
+        .eq('referred_id', refereeId);
+
+      if (error) throw error;
+
+      // Add commission to referrer's balance
+      await supabase.rpc('add_balance', {
+        user_id: referrerId,
+        amount: referralCommission
+      });
       
       console.log('Processing referral commission:', {
         withdrawalAmount,
@@ -101,16 +128,29 @@ export function useReferral() {
 
   const validateReferralCode = async (code: string): Promise<boolean> => {
     try {
-      // Mock validation - in real implementation, check against database
-      const isValid = code.startsWith('REF') && code.length === 11;
-      return isValid;
+      // Validate format
+      if (!code.startsWith('REF') || code.length !== 16) {
+        return false;
+      }
+
+      // Extract user ID from code
+      const userId = code.substring(3, 11).toLowerCase();
+
+      // Check if user exists
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id')
+        .eq('user_id', userId)
+        .single();
+
+      return !error && !!data;
     } catch (error: any) {
       console.error('Error validating referral code:', error);
       return false;
     }
   };
 
-  const applyReferralCode = async (referralCode: string) => {
+  const applyReferralCode = async (referralCode: string, newUserId?: string): Promise<boolean> => {
     try {
       const isValid = await validateReferralCode(referralCode);
       
@@ -119,9 +159,52 @@ export function useReferral() {
         return false;
       }
 
-      // In real implementation, this would:
-      // 1. Create referral relationship in database
-      // 2. Update user profile with referrer information
+      // Extract referrer ID from code
+      const referrerId = referralCode.substring(3, 11).toLowerCase();
+      const userId = newUserId || user?.id;
+
+      if (!userId) {
+        toast.error('User not authenticated');
+        return false;
+      }
+
+      // Check if user already has a referrer
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('referred_by')
+        .eq('user_id', userId)
+        .single();
+
+      if ((existingProfile as any)?.referred_by) {
+        toast.error('You have already used a referral code');
+        return false;
+      }
+
+      // Create referral relationship in database
+      const { error: referralError } = await supabase
+        .from('referrals')
+        .insert({
+          referrer_id: referrerId,
+          referred_id: userId,
+          status: 'active',
+          commission_rate: 0.10
+        });
+
+      if (referralError) {
+        console.error('Error creating referral:', referralError);
+        throw referralError;
+      }
+
+      // Update user profile with referral info
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ referred_by: referrerId } as any)
+        .eq('user_id', userId);
+
+      if (profileError) {
+        console.error('Error updating profile:', profileError);
+        throw profileError;
+      }
       
       toast.success('Referral code applied successfully!');
       return true;

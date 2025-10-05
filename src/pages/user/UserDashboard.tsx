@@ -21,6 +21,8 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { useTasks } from "@/hooks/useTasks";
+import { ProfileKYCNotification } from "@/components/user/ProfileKYCNotification";
+import { WithdrawalMethodNotification } from "@/components/user/WithdrawalMethodNotification";
 
 export default function UserDashboard() {
   const isMobile = useIsMobile();
@@ -83,6 +85,10 @@ export default function UserDashboard() {
 
   return (
     <div className="p-4 md:p-6 space-y-6">
+      {/* Notifications */}
+      <ProfileKYCNotification />
+      <WithdrawalMethodNotification />
+
       {isMobile && (
         <MobileStatsCard 
           balance={profile?.balance || 0}

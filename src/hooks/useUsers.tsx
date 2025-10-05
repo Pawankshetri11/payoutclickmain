@@ -40,18 +40,28 @@ export function useUsers() {
 
   const updateUser = async (userId: string, updates: Partial<User>) => {
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('user_id', userId);
-
-      if (error) throw error;
+      console.log('Updating user:', userId, 'with updates:', updates);
       
+      // Remove id and user_id from updates as they should not be updated
+      const { id, user_id, created_at, ...safeUpdates } = updates as any;
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .update(safeUpdates)
+        .eq('user_id', userId)
+        .select();
+
+      if (error) {
+        console.error('Update error:', error);
+        throw error;
+      }
+      
+      console.log('Update successful:', data);
       toast.success('User updated successfully!');
       await fetchUsers();
     } catch (error: any) {
       console.error('Error updating user:', error);
-      toast.error('Failed to update user');
+      toast.error(`Failed to update user: ${error.message}`);
     }
   };
 

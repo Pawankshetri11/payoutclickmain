@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,11 +11,15 @@ import { Camera, Mail, Phone, MapPin, Calendar, Edit, Shield, Award, TrendingUp 
 import { toast } from "sonner";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function Profile() {
   const { user } = useAuth();
-  const { profile, loading, updateProfile } = useProfile();
+  const { profile, loading, updateProfile, refetch } = useProfile();
   const [isEditing, setIsEditing] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string>("");
+  const avatarInputRef = useRef<HTMLInputElement>(null);
   const [profileData, setProfileData] = useState({
     name: "",
     email: "",
@@ -31,8 +35,40 @@ export default function Profile() {
         phone: profile.phone || "",
         bio: ""
       });
+      setAvatarUrl(profile.avatar_url || "");
     }
   }, [profile]);
+
+  const handleAvatarUpload = async (file: File) => {
+    if (!user) return;
+
+    try {
+      setUploading(true);
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/avatar-${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      await updateProfile({ avatar_url: publicUrl });
+      setAvatarUrl(publicUrl);
+      toast.success("Profile picture updated successfully");
+      refetch();
+    } catch (error: any) {
+      console.error('Avatar upload error:', error);
+      toast.error("Failed to upload profile picture");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSave = async () => {
     await updateProfile({
@@ -69,15 +105,26 @@ export default function Profile() {
             <div className="flex flex-col sm:flex-row items-start gap-4 md:gap-6">
               <div className="relative mx-auto sm:mx-0">
                 <Avatar className="w-20 h-20 md:w-24 md:h-24">
-                  <AvatarImage src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face" />
+                  <AvatarImage src={avatarUrl || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face"} />
                   <AvatarFallback className="text-lg md:text-xl font-semibold">
                     {profile?.name?.charAt(0) || "U"}
                   </AvatarFallback>
                 </Avatar>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleAvatarUpload(file);
+                  }}
+                />
                 <Button 
                   size="sm" 
                   className="absolute -bottom-1 -right-1 md:-bottom-2 md:-right-2 rounded-full w-7 h-7 md:w-8 md:h-8 p-0"
-                  onClick={() => toast.success("Profile picture upload coming soon")}
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={uploading}
                 >
                   <Camera className="h-3 w-3 md:h-4 md:w-4" />
                 </Button>

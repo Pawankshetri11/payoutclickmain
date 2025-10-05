@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,22 +7,79 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Upload, FileText, Check, AlertCircle, User, Camera, CreditCard } from "lucide-react";
+import { Upload, FileText, Check, AlertCircle, User, Camera, CreditCard, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfile";
 
 export default function CompleteKYC() {
+  const { user } = useAuth();
+  const { profile, refetch } = useProfile();
   const [currentStep, setCurrentStep] = useState(1);
-  const [kycStatus, setKycStatus] = useState<"pending" | "verified" | "rejected">("pending");
+  const [kycStatus, setKycStatus] = useState<"pending" | "verified" | "rejected">(profile?.kyc_status || "pending");
+  const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
     step1: { firstName: "", lastName: "", dob: "", gender: "", phone: "" },
-    step2: { docType: "", frontDoc: null, backDoc: null, selfie: null },
-    step3: { address: "", city: "", state: "", zip: "", country: "", proof: null },
+    step2: { docType: "", frontDoc: null, backDoc: null, selfie: null, frontDocUrl: "", backDocUrl: "", selfieUrl: "" },
+    step3: { address: "", city: "", state: "", zip: "", country: "", proof: null, proofUrl: "" },
     step4: { accountHolder: "", accountNumber: "", routing: "", bankName: "", accountType: "" }
   });
 
-  const handleFileUpload = (type: string) => {
-    // Dummy file upload
-    toast.success(`${type} uploaded successfully`);
+  const frontDocRef = useRef<HTMLInputElement>(null);
+  const backDocRef = useRef<HTMLInputElement>(null);
+  const selfieRef = useRef<HTMLInputElement>(null);
+  const proofDocRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = async (file: File, type: string, step: number) => {
+    if (!user || !file) return;
+
+    try {
+      setUploading(true);
+      
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${type}-${Date.now()}.${fileExt}`;
+
+      const { error: uploadError, data } = await supabase.storage
+        .from('kyc-documents')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('kyc-documents')
+        .getPublicUrl(fileName);
+
+      toast.success(`${type} uploaded successfully`);
+
+      // Update formData with file URL
+      if (step === 2) {
+        setFormData(prev => ({
+          ...prev,
+          step2: {
+            ...prev.step2,
+            [`${type}Url`]: publicUrl,
+            [type]: file
+          }
+        }));
+      } else if (step === 3) {
+        setFormData(prev => ({
+          ...prev,
+          step3: {
+            ...prev.step3,
+            proofUrl: publicUrl,
+            proof: file
+          }
+        }));
+      }
+
+      return publicUrl;
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast.error(`Failed to upload ${type}`);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const validateStep = (step: number) => {
@@ -65,10 +122,52 @@ export default function CompleteKYC() {
     }
   };
 
-  const handleSubmit = () => {
-    if (validateStep(4)) {
+  const handleSubmit = async () => {
+    if (!validateStep(4) || !user) return;
+
+    try {
+      setUploading(true);
+
+      // Update profile with KYC data
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          name: `${formData.step1.firstName} ${formData.step1.lastName}`,
+          phone: formData.step1.phone,
+          kyc_status: 'pending',
+          kyc_submitted_at: new Date().toISOString(),
+          kyc_data: {
+            personal: formData.step1,
+            documents: {
+              type: formData.step2.docType,
+              frontUrl: formData.step2.frontDocUrl,
+              backUrl: formData.step2.backDocUrl,
+              selfieUrl: formData.step2.selfieUrl
+            },
+            address: formData.step3,
+            bank: {
+              ...formData.step4,
+              addedAt: new Date().toISOString()
+            }
+          },
+          bank_account_number: formData.step4.accountNumber,
+          bank_name: formData.step4.bankName,
+          bank_account_type: formData.step4.accountType,
+          bank_routing_number: formData.step4.routing,
+          bank_account_holder: formData.step4.accountHolder
+        })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
       setKycStatus("pending");
       toast.success("KYC documents submitted for verification");
+      refetch();
+    } catch (error: any) {
+      console.error('KYC submission error:', error);
+      toast.error("Failed to submit KYC documents");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -205,8 +304,11 @@ export default function CompleteKYC() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
-                <Label>Document Type</Label>
-                <Select>
+                <Label>Document Type *</Label>
+                <Select 
+                  value={formData.step2.docType}
+                  onValueChange={(value) => setFormData({...formData, step2: {...formData.step2, docType: value}})}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select document type" />
                   </SelectTrigger>
@@ -221,35 +323,80 @@ export default function CompleteKYC() {
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Front Side</Label>
+                  <Label>Front Side *</Label>
+                  <input
+                    ref={frontDocRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileUpload(file, 'frontDoc', 2);
+                    }}
+                  />
                   <div 
                     className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 transition-colors"
-                    onClick={() => handleFileUpload("ID Front")}
+                    onClick={() => frontDocRef.current?.click()}
                   >
-                    <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                    <p className="mt-2 text-sm text-gray-600">Click to upload front side</p>
+                    {formData.step2.frontDocUrl ? (
+                      <><CheckCircle className="mx-auto h-12 w-12 text-green-500" />
+                      <p className="mt-2 text-sm text-green-600">Uploaded</p></>
+                    ) : (
+                      <><Upload className="mx-auto h-12 w-12 text-gray-400" />
+                      <p className="mt-2 text-sm text-gray-600">Click to upload front side</p></>
+                    )}
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Back Side</Label>
+                  <Label>Back Side *</Label>
+                  <input
+                    ref={backDocRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleFileUpload(file, 'backDoc', 2);
+                    }}
+                  />
                   <div 
                     className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 transition-colors"
-                    onClick={() => handleFileUpload("ID Back")}
+                    onClick={() => backDocRef.current?.click()}
                   >
-                    <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                    <p className="mt-2 text-sm text-gray-600">Click to upload back side</p>
+                    {formData.step2.backDocUrl ? (
+                      <><CheckCircle className="mx-auto h-12 w-12 text-green-500" />
+                      <p className="mt-2 text-sm text-green-600">Uploaded</p></>
+                    ) : (
+                      <><Upload className="mx-auto h-12 w-12 text-gray-400" />
+                      <p className="mt-2 text-sm text-gray-600">Click to upload back side</p></>
+                    )}
                   </div>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label>Selfie with ID</Label>
+                <Label>Selfie with ID *</Label>
+                <input
+                  ref={selfieRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleFileUpload(file, 'selfie', 2);
+                  }}
+                />
                 <div 
                   className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 transition-colors"
-                  onClick={() => handleFileUpload("Selfie with ID")}
+                  onClick={() => selfieRef.current?.click()}
                 >
-                  <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                  <p className="mt-2 text-sm text-gray-600">Upload a selfie holding your ID</p>
+                  {formData.step2.selfieUrl ? (
+                    <><CheckCircle className="mx-auto h-12 w-12 text-green-500" />
+                    <p className="mt-2 text-sm text-green-600">Uploaded</p></>
+                  ) : (
+                    <><Upload className="mx-auto h-12 w-12 text-gray-400" />
+                    <p className="mt-2 text-sm text-gray-600">Upload a selfie holding your ID</p></>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -267,31 +414,51 @@ export default function CompleteKYC() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="address">Full Address</Label>
+                <Label htmlFor="address">Full Address *</Label>
                 <Textarea 
                   id="address" 
                   placeholder="Enter your complete address"
                   rows={3}
+                  value={formData.step3.address}
+                  onChange={(e) => setFormData({...formData, step3: {...formData.step3, address: e.target.value}})}
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="city">City</Label>
-                  <Input id="city" placeholder="Enter city" />
+                  <Label htmlFor="city">City *</Label>
+                  <Input 
+                    id="city" 
+                    placeholder="Enter city"
+                    value={formData.step3.city}
+                    onChange={(e) => setFormData({...formData, step3: {...formData.step3, city: e.target.value}})}
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="state">State/Province</Label>
-                  <Input id="state" placeholder="Enter state" />
+                  <Label htmlFor="state">State/Province *</Label>
+                  <Input 
+                    id="state" 
+                    placeholder="Enter state"
+                    value={formData.step3.state}
+                    onChange={(e) => setFormData({...formData, step3: {...formData.step3, state: e.target.value}})}
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="zip">ZIP/Postal Code</Label>
-                  <Input id="zip" placeholder="Enter ZIP code" />
+                  <Label htmlFor="zip">ZIP/Postal Code *</Label>
+                  <Input 
+                    id="zip" 
+                    placeholder="Enter ZIP code"
+                    value={formData.step3.zip}
+                    onChange={(e) => setFormData({...formData, step3: {...formData.step3, zip: e.target.value}})}
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="country">Country</Label>
-                  <Select>
+                  <Label htmlFor="country">Country *</Label>
+                  <Select
+                    value={formData.step3.country}
+                    onValueChange={(value) => setFormData({...formData, step3: {...formData.step3, country: value}})}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select country" />
                     </SelectTrigger>
@@ -306,13 +473,28 @@ export default function CompleteKYC() {
               </div>
               
               <div className="space-y-2">
-                <Label>Address Proof Document</Label>
+                <Label>Address Proof Document *</Label>
+                <input
+                  ref={proofDocRef}
+                  type="file"
+                  accept="image/*,.pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleFileUpload(file, 'proof', 3);
+                  }}
+                />
                 <div 
                   className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 transition-colors"
-                  onClick={() => handleFileUpload("Address Proof")}
+                  onClick={() => proofDocRef.current?.click()}
                 >
-                  <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                  <p className="mt-2 text-sm text-gray-600">Upload utility bill, bank statement, or lease agreement</p>
+                  {formData.step3.proofUrl ? (
+                    <><CheckCircle className="mx-auto h-12 w-12 text-green-500" />
+                    <p className="mt-2 text-sm text-green-600">Uploaded</p></>
+                  ) : (
+                    <><Upload className="mx-auto h-12 w-12 text-gray-400" />
+                    <p className="mt-2 text-sm text-gray-600">Upload utility bill, bank statement, or lease agreement</p></>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -330,30 +512,53 @@ export default function CompleteKYC() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="accountHolder">Account Holder Name</Label>
-                <Input id="accountHolder" placeholder="Enter account holder name" />
+                <Label htmlFor="accountHolder">Account Holder Name *</Label>
+                <Input 
+                  id="accountHolder" 
+                  placeholder="Enter account holder name"
+                  value={formData.step4.accountHolder}
+                  onChange={(e) => setFormData({...formData, step4: {...formData.step4, accountHolder: e.target.value}})}
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="accountNumber">Account Number</Label>
-                <Input id="accountNumber" placeholder="Enter account number" />
+                <Label htmlFor="accountNumber">Account Number *</Label>
+                <Input 
+                  id="accountNumber" 
+                  placeholder="Enter account number"
+                  value={formData.step4.accountNumber}
+                  onChange={(e) => setFormData({...formData, step4: {...formData.step4, accountNumber: e.target.value}})}
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="routingNumber">Routing Number / IFSC Code</Label>
-                <Input id="routingNumber" placeholder="Enter routing/IFSC code" />
+                <Label htmlFor="routingNumber">Routing Number / IFSC Code *</Label>
+                <Input 
+                  id="routingNumber" 
+                  placeholder="Enter routing/IFSC code"
+                  value={formData.step4.routing}
+                  onChange={(e) => setFormData({...formData, step4: {...formData.step4, routing: e.target.value}})}
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="bankName">Bank Name</Label>
-                <Input id="bankName" placeholder="Enter bank name" />
+                <Label htmlFor="bankName">Bank Name *</Label>
+                <Input 
+                  id="bankName" 
+                  placeholder="Enter bank name"
+                  value={formData.step4.bankName}
+                  onChange={(e) => setFormData({...formData, step4: {...formData.step4, bankName: e.target.value}})}
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="accountType">Account Type</Label>
-                <Select>
+                <Label htmlFor="accountType">Account Type *</Label>
+                <Select
+                  value={formData.step4.accountType}
+                  onValueChange={(value) => setFormData({...formData, step4: {...formData.step4, accountType: value}})}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select account type" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="savings">Savings</SelectItem>
-                    <SelectItem value="checking">Checking</SelectItem>
+                    <SelectItem value="current">Current</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -376,15 +581,17 @@ export default function CompleteKYC() {
           <Button 
             onClick={handleNext}
             className="bg-blue-600 hover:bg-blue-700"
+            disabled={uploading}
           >
-            Next
+            {uploading ? 'Uploading...' : 'Next'}
           </Button>
         ) : (
           <Button 
             onClick={handleSubmit}
             className="bg-green-600 hover:bg-green-700"
+            disabled={uploading}
           >
-            Submit KYC
+            {uploading ? 'Submitting...' : 'Submit KYC'}
           </Button>
         )}
       </div>

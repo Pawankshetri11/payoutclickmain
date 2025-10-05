@@ -24,7 +24,7 @@ import {
   Edit,
   Trash2,
   Folder,
-  FileText
+  FileText,
 } from "lucide-react";
 
 const Categories = () => {
@@ -36,7 +36,7 @@ const Categories = () => {
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: "",
-    description: ""
+    description: "",
   });
 
   useEffect(() => {
@@ -68,7 +68,6 @@ const Categories = () => {
         return;
       }
 
-      // Optional custom short ID (instead of UUID)
       const service_id = "CAT-" + Math.floor(100000 + Math.random() * 900000);
 
       const { error } = await (supabase as any)
@@ -77,7 +76,8 @@ const Categories = () => {
           {
             name: formData.name,
             description: formData.description,
-            service_id
+            service_id,
+            is_active: true,
           },
         ]);
 
@@ -104,7 +104,7 @@ const Categories = () => {
         .from("job_categories")
         .update({
           name: formData.name,
-          description: formData.description
+          description: formData.description,
         })
         .eq("id", selectedCategory.id);
 
@@ -139,13 +139,30 @@ const Categories = () => {
     }
   };
 
+  const handleToggleStatus = async (id: string, currentStatus: boolean) => {
+    try {
+      const { error } = await (supabase as any)
+        .from("job_categories")
+        .update({ is_active: !currentStatus })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      toast.success(`Category ${!currentStatus ? "activated" : "deactivated"}`);
+      fetchCategories();
+    } catch (error: any) {
+      console.error("Error updating status:", error);
+      toast.error("Failed to update status");
+    }
+  };
+
   const filteredCategories = categories.filter((cat) =>
     cat.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
     <div className="p-6 space-y-6">
-      {/* Page Header */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
@@ -153,11 +170,11 @@ const Categories = () => {
             Category Management
           </h1>
           <p className="text-muted-foreground">
-            Manage job categories and organize them easily
+            Manage job categories and their statuses
           </p>
         </div>
 
-        {/* Add Category Button */}
+        {/* Add Category */}
         <Dialog open={newCategoryOpen} onOpenChange={setNewCategoryOpen}>
           <DialogTrigger asChild>
             <Button className="bg-gradient-primary hover:opacity-90 shadow-glow">
@@ -186,7 +203,7 @@ const Categories = () => {
                 <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
-                  placeholder="Brief description of this category"
+                  placeholder="Brief description"
                   value={formData.description}
                   onChange={(e) =>
                     setFormData({ ...formData, description: e.target.value })
@@ -206,12 +223,12 @@ const Categories = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Edit Category Dialog */}
+        {/* Edit Category */}
         <Dialog open={editCategoryOpen} onOpenChange={setEditCategoryOpen}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Edit Category</DialogTitle>
-              <DialogDescription>Update category information</DialogDescription>
+              <DialogDescription>Update category details</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
@@ -249,7 +266,7 @@ const Categories = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-gradient-card border-border/50 shadow-elegant">
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
@@ -261,21 +278,35 @@ const Categories = () => {
             </div>
           </CardContent>
         </Card>
-
         <Card className="bg-gradient-card border-border/50 shadow-elegant">
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-warning" />
+              <Badge className="bg-green-100 text-green-600">Active</Badge>
               <div>
-                <p className="text-sm text-muted-foreground">Filtered Results</p>
-                <p className="text-xl font-bold text-warning">{filteredCategories.length}</p>
+                <p className="text-sm text-muted-foreground">Active</p>
+                <p className="text-xl font-bold text-green-600">
+                  {categories.filter((c) => c.is_active).length}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-card border-border/50 shadow-elegant">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <Badge className="bg-red-100 text-red-600">Inactive</Badge>
+              <div>
+                <p className="text-sm text-muted-foreground">Inactive</p>
+                <p className="text-xl font-bold text-red-600">
+                  {categories.filter((c) => !c.is_active).length}
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Main Content */}
+      {/* Table */}
       <Card className="bg-gradient-card border-border/50 shadow-elegant">
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -302,8 +333,8 @@ const Categories = () => {
               <TableRow>
                 <TableHead>Category</TableHead>
                 <TableHead>Description</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Service ID</TableHead>
-                <TableHead>Created</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -311,9 +342,7 @@ const Categories = () => {
               {loading ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-8">
-                    <div className="flex justify-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                    </div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
                   </TableCell>
                 </TableRow>
               ) : filteredCategories.length === 0 ? (
@@ -325,21 +354,23 @@ const Categories = () => {
               ) : (
                 filteredCategories.map((category) => (
                   <TableRow key={category.id} className="hover:bg-accent/50">
-                    <TableCell>
-                      <p className="font-medium text-foreground">{category.name}</p>
+                    <TableCell className="font-medium">{category.name}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {category.description || "No description"}
                     </TableCell>
                     <TableCell>
-                      <p className="text-sm text-muted-foreground max-w-xs truncate">
-                        {category.description || "No description"}
-                      </p>
+                      {category.is_active ? (
+                        <Badge className="bg-green-100 text-green-600">Active</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-muted-foreground">
+                          Inactive
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary">
                         {category.service_id || category.id.slice(0, 8)}
                       </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {new Date(category.created_at).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
@@ -350,13 +381,22 @@ const Categories = () => {
                             setSelectedCategory(category);
                             setFormData({
                               name: category.name,
-                              description: category.description || ""
+                              description: category.description || "",
                             });
                             setEditCategoryOpen(true);
                           }}
                         >
                           <Edit className="h-4 w-4 mr-1" />
                           Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            handleToggleStatus(category.id, category.is_active)
+                          }
+                        >
+                          {category.is_active ? "Deactivate" : "Activate"}
                         </Button>
                         <Button
                           variant="ghost"

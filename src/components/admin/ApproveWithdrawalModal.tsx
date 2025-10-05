@@ -3,7 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Upload } from "lucide-react";
@@ -15,6 +17,7 @@ interface ApproveWithdrawalModalProps {
     id: string;
     user_id: string;
     amount: number;
+    payment_method_id?: string;
   };
   onSuccess: () => void;
 }
@@ -24,6 +27,28 @@ export function ApproveWithdrawalModal({ open, onOpenChange, withdrawal, onSucce
   const [paymentMethod, setPaymentMethod] = useState("");
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [userPaymentMethods, setUserPaymentMethods] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (withdrawal.user_id) {
+      fetchUserPaymentMethods();
+    }
+  }, [withdrawal.user_id]);
+
+  const fetchUserPaymentMethods = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('payment_methods' as any)
+        .select('*')
+        .eq('user_id', withdrawal.user_id)
+        .order('is_default', { ascending: false });
+
+      if (error) throw error;
+      setUserPaymentMethods(data || []);
+    } catch (error: any) {
+      console.error('Error fetching payment methods:', error);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -113,6 +138,72 @@ export function ApproveWithdrawalModal({ open, onOpenChange, withdrawal, onSucce
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* User Payment Methods */}
+          {userPaymentMethods.length > 0 && (
+            <div className="space-y-2">
+              <Label>User's Payment Methods</Label>
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {userPaymentMethods.map((method) => (
+                  <Card key={method.id} className={method.is_default ? 'border-primary' : ''}>
+                    <CardContent className="p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <Badge variant={method.is_default ? 'default' : 'secondary'} className="text-xs">
+                          {method.is_default && '⭐ '}
+                          {method.method_type.toUpperCase()}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        {method.method_type === 'bank' && (
+                          <>
+                            <div>
+                              <span className="text-muted-foreground">Bank:</span>
+                              <p className="font-medium">{method.bank_name}</p>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Holder:</span>
+                              <p className="font-medium">{method.account_holder}</p>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Account:</span>
+                              <p className="font-medium">{method.account_number}</p>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Routing:</span>
+                              <p className="font-medium">{method.routing_number}</p>
+                            </div>
+                          </>
+                        )}
+                        {method.method_type === 'upi' && (
+                          <div>
+                            <span className="text-muted-foreground">UPI ID:</span>
+                            <p className="font-medium">{method.upi_id}</p>
+                          </div>
+                        )}
+                        {method.method_type === 'paypal' && (
+                          <div>
+                            <span className="text-muted-foreground">PayPal:</span>
+                            <p className="font-medium">{method.paypal_email}</p>
+                          </div>
+                        )}
+                        {method.method_type === 'crypto' && (
+                          <>
+                            <div className="col-span-2">
+                              <span className="text-muted-foreground">Wallet:</span>
+                              <p className="font-medium break-all text-xs">{method.crypto_wallet_address}</p>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Network:</span>
+                              <p className="font-medium">{method.crypto_network}</p>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="transactionId">Transaction ID *</Label>
             <Input

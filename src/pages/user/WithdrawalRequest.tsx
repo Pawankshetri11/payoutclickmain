@@ -29,18 +29,42 @@ export default function WithdrawalRequest() {
   const { processReferralCommission } = useReferral();
   const [withdrawalForm, setWithdrawalForm] = useState({
     amount: "",
-    method: "",
-    accountId: "",
+    paymentMethodId: "",
   });
 
   const [currentBalance, setCurrentBalance] = useState(0);
   const [kycStatus, setKycStatus] = useState<string>("");
   const [userWithdrawals, setUserWithdrawals] = useState<any[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
 
   useEffect(() => {
     fetchUserData();
     fetchUserWithdrawals();
+    fetchPaymentMethods();
   }, [user]);
+
+  const fetchPaymentMethods = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('payment_methods' as any)
+        .select('*')
+        .eq('user_id', user.id)
+        .order('is_default', { ascending: false });
+
+      if (error) throw error;
+      setPaymentMethods((data as any) || []);
+      
+      // Auto-select default method
+      const defaultMethod = (data as any)?.find((m: any) => m.is_default);
+      if (defaultMethod) {
+        setWithdrawalForm(prev => ({ ...prev, paymentMethodId: defaultMethod.id }));
+      }
+    } catch (error: any) {
+      console.error('Error fetching payment methods:', error);
+    }
+  };
 
   const fetchUserData = async () => {
     if (!user) return;
@@ -86,27 +110,12 @@ export default function WithdrawalRequest() {
   const minWithdrawal = 100;
   const maxWithdrawal = 10000;
 
-  const withdrawalMethods = [
-    {
-      id: "bank",
-      type: "Bank Transfer",
-      name: "Bank Account",
-      icon: CreditCard,
-      fee: "2%",
-      processingTime: "1-2 business days",
-    },
-  ];
-
-  const calculateFees = (amount: number, method: string) => {
-    const methodData = withdrawalMethods.find(m => m.id === method);
-    if (!methodData) return { fee: 0, netAmount: amount };
-
+  const calculateFees = (amount: number) => {
     // Base withdrawal fee (10% company commission)
     const companyFee = amount * 0.10;
     
-    // Additional processing fee based on method
-    const processingFeeRate = methodData.fee === "2%" ? 0.02 : 0.03;
-    const processingFee = amount * processingFeeRate;
+    // Processing fee (2%)
+    const processingFee = amount * 0.02;
     
     const totalFee = companyFee + processingFee;
     const netAmount = amount - totalFee;
@@ -143,14 +152,17 @@ export default function WithdrawalRequest() {
       return;
     }
 
-    if (!withdrawalForm.method) {
-      toast.error("Please select a withdrawal method");
+    if (!withdrawalForm.paymentMethodId) {
+      toast.error("Please select a payment method");
       return;
     }
 
     try {
       // Calculate fees
-      const fees = calculateFees(amount, withdrawalForm.method);
+      const fees = calculateFees(amount);
+      
+      // Get selected payment method details
+      const selectedMethod = paymentMethods.find(m => m.id === withdrawalForm.paymentMethodId);
       
       if (!user) {
         toast.error("Please log in to submit withdrawal request");
@@ -164,9 +176,9 @@ export default function WithdrawalRequest() {
           user_id: user.id,
           type: 'withdrawal',
           amount: amount,
-          method: withdrawalForm.method,
+          payment_method_id: withdrawalForm.paymentMethodId,
           status: 'pending',
-          description: `Withdrawal request - ${selectedMethod?.type}`
+          description: `Withdrawal request - ${selectedMethod?.method_type}`
         });
 
       if (insertError) throw insertError;
@@ -204,9 +216,9 @@ export default function WithdrawalRequest() {
     }
   };
 
-  const selectedMethod = withdrawalMethods.find(m => m.id === withdrawalForm.method);
+  const selectedMethod = paymentMethods.find(m => m.id === withdrawalForm.paymentMethodId);
   const amount = parseFloat(withdrawalForm.amount) || 0;
-  const fees = selectedMethod ? calculateFees(amount, withdrawalForm.method) : null;
+  const fees = amount > 0 ? calculateFees(amount) : null;
 
   return (
     <div className="container mx-auto px-3 md:px-6 py-4 md:py-8 max-w-4xl">
@@ -268,32 +280,30 @@ export default function WithdrawalRequest() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="method">Withdrawal Method</Label>
-                <Select value={withdrawalForm.method} onValueChange={(value) => setWithdrawalForm({...withdrawalForm, method: value})}>
+                <Label htmlFor="method">Payment Method</Label>
+                <Select value={withdrawalForm.paymentMethodId} onValueChange={(value) => setWithdrawalForm({...withdrawalForm, paymentMethodId: value})}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select withdrawal method" />
+                    <SelectValue placeholder="Select payment method" />
                   </SelectTrigger>
                   <SelectContent>
-                    {withdrawalMethods.map((method) => (
+                    {paymentMethods.map((method) => (
                       <SelectItem key={method.id} value={method.id}>
                         <div className="flex items-center gap-2">
-                          <method.icon className="h-4 w-4" />
-                          {method.name} ({method.fee} fee)
+                          {method.is_default && "⭐ "}
+                          {method.method_type.toUpperCase()}
+                          {method.method_type === 'bank' && ` - ${method.bank_name}`}
+                          {method.method_type === 'upi' && ` - ${method.upi_id}`}
                         </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {paymentMethods.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    No payment methods found. <Button variant="link" className="p-0 h-auto" onClick={() => navigate('/user/withdrawal-methods')}>Add one now</Button>
+                  </p>
+                )}
               </div>
-
-              {selectedMethod && (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    {selectedMethod.type} • Processing time: {selectedMethod.processingTime}
-                  </AlertDescription>
-                </Alert>
-              )}
 
               {fees && amount > 0 && (
                 <div className="p-4 bg-muted/20 rounded-lg border border-border/50">
@@ -308,7 +318,7 @@ export default function WithdrawalRequest() {
                       <span className="text-destructive">-₹{fees.companyFee?.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Processing Fee ({selectedMethod.fee}):</span>
+                      <span className="text-muted-foreground">Processing Fee (2%):</span>
                       <span className="text-destructive">-₹{fees.processingFee?.toFixed(2)}</span>
                     </div>
                     <div className="border-t border-border pt-2">
@@ -323,7 +333,7 @@ export default function WithdrawalRequest() {
 
               <Button 
                 onClick={handleSubmitWithdrawal}
-                disabled={!amount || amount < minWithdrawal || amount > currentBalance || !withdrawalForm.method}
+                disabled={!amount || amount < minWithdrawal || amount > currentBalance || !withdrawalForm.paymentMethodId}
                 className="w-full"
               >
                 Submit Withdrawal Request

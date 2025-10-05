@@ -26,17 +26,12 @@ import {
   Ban,
   Eye,
   Edit,
-  LogIn,
-  Plus,
-  Minus
+  LogIn
 } from "lucide-react";
 import { KYCDetailsModal } from "@/components/admin/KYCDetailsModal";
 import { UserEditModal } from "./UserEditModal";
 import { AddUserModal } from "@/components/admin/AddUserModal";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 
 const Users = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -44,67 +39,15 @@ const Users = () => {
   const [kycModalOpen, setKycModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [addUserModalOpen, setAddUserModalOpen] = useState(false);
-  const [balanceModalOpen, setBalanceModalOpen] = useState(false);
-  const [balanceAmount, setBalanceAmount] = useState("");
-  const [balanceAction, setBalanceAction] = useState<'add' | 'remove'>('add');
   const { users, loading, updateUserStatus, updateKYCStatus, refetch } = useUsers();
 
   const handleLoginAsUser = async (userId: string) => {
-    try {
-      // Store admin session
-      const currentSession = await supabase.auth.getSession();
-      if (currentSession.data.session) {
-        localStorage.setItem('admin_session', JSON.stringify(currentSession.data.session));
-      }
-
-      // Sign out current admin
-      await supabase.auth.signOut();
-
-      toast.success("Logging in as user...");
-      
-      // In production, you'd need proper session switching
-      // For now, just notify
-      toast.info("User impersonation feature - Sign in as the user to test their account");
-    } catch (error: any) {
-      console.error("Error switching user:", error);
-      toast.error("Failed to switch user");
-    }
+    const user = users.find(u => u.user_id === userId);
+    if (!user) return;
+    
+    toast.info(`To login as ${user.name}: Use their email (${user.email}) to login. Admins cannot directly impersonate users for security.`);
   };
 
-  const handleBalanceUpdate = async () => {
-    if (!selectedUser || !balanceAmount) {
-      toast.error("Please enter an amount");
-      return;
-    }
-
-    const amount = parseFloat(balanceAmount);
-    if (isNaN(amount) || amount <= 0) {
-      toast.error("Please enter a valid amount");
-      return;
-    }
-
-    try {
-      const currentBalance = selectedUser.balance || 0;
-      const newBalance = balanceAction === 'add' 
-        ? currentBalance + amount 
-        : Math.max(0, currentBalance - amount);
-
-      const { error } = await supabase
-        .from('profiles')
-        .update({ balance: newBalance })
-        .eq('user_id', selectedUser.user_id);
-
-      if (error) throw error;
-
-      toast.success(`Balance ${balanceAction === 'add' ? 'added' : 'removed'} successfully!`);
-      setBalanceModalOpen(false);
-      setBalanceAmount("");
-      refetch();
-    } catch (error: any) {
-      console.error("Error updating balance:", error);
-      toast.error("Failed to update balance");
-    }
-  };
 
   // Calculate stats from real data
   const stats = {
@@ -244,6 +187,7 @@ const Users = () => {
               <TabsTrigger value="with_balance">With Balance</TabsTrigger>
             </TabsList>
 
+            {/* All Users Tab */}
             <TabsContent value="all" className="space-y-4">
               <Table>
                 <TableHeader>
@@ -272,7 +216,9 @@ const Users = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    users.map((user) => (
+                    users
+                      .filter(u => !searchTerm || u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase()))
+                      .map((user) => (
                       <TableRow key={user.id} className="hover:bg-accent/50">
                         <TableCell>
                           <div>
@@ -330,29 +276,403 @@ const Users = () => {
                               <LogIn className="h-4 w-4 mr-1" />
                               Login
                             </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => {
-                                setSelectedUser(user);
-                                setBalanceAction('add');
-                                setBalanceModalOpen(true);
-                              }}
-                            >
-                              <Plus className="h-4 w-4 mr-1" />
-                              Add
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TabsContent>
+
+            {/* Active Users Tab */}
+            <TabsContent value="active" className="space-y-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>KYC</TableHead>
+                    <TableHead>Balance</TableHead>
+                    <TableHead>Joined</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.filter(u => u.status === 'active' && (!searchTerm || u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase()))).length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8">
+                        <p className="text-muted-foreground">No active users found</p>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    users.filter(u => u.status === 'active' && (!searchTerm || u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase()))).map((user) => (
+                      <TableRow key={user.id} className="hover:bg-accent/50">
+                        <TableCell>
+                          <div>
+                            <p className="font-medium text-foreground">{user.name}</p>
+                            <p className="text-sm text-muted-foreground">ID: {user.id.substring(0, 8)}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1 text-sm">
+                              <Mail className="h-3 w-3" />
+                              {user.email}
+                            </div>
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <Phone className="h-3 w-3" />
+                              {user.phone || 'N/A'}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{getKycBadge(user.kyc_status)}</TableCell>
+                        <TableCell className="font-medium">₹{user.balance.toFixed(2)}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {new Date(user.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <Button variant="ghost" size="sm" onClick={() => { setSelectedUser(user); setKycModalOpen(true); }}>
+                              <Eye className="h-4 w-4 mr-1" />KYC
                             </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => {
-                                setSelectedUser(user);
-                                setBalanceAction('remove');
-                                setBalanceModalOpen(true);
-                              }}
-                            >
-                              <Minus className="h-4 w-4 mr-1" />
-                              Remove
+                            <Button variant="ghost" size="sm" onClick={() => { setSelectedUser(user); setEditModalOpen(true); }}>
+                              <Edit className="h-4 w-4 mr-1" />Edit
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleLoginAsUser(user.user_id)}>
+                              <LogIn className="h-4 w-4 mr-1" />Login
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TabsContent>
+
+            {/* Banned Users Tab */}
+            <TabsContent value="banned" className="space-y-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>KYC</TableHead>
+                    <TableHead>Balance</TableHead>
+                    <TableHead>Joined</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.filter(u => u.status === 'banned' && (!searchTerm || u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase()))).length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8">
+                        <p className="text-muted-foreground">No banned users found</p>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    users.filter(u => u.status === 'banned' && (!searchTerm || u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase()))).map((user) => (
+                      <TableRow key={user.id} className="hover:bg-accent/50">
+                        <TableCell>
+                          <div>
+                            <p className="font-medium text-foreground">{user.name}</p>
+                            <p className="text-sm text-muted-foreground">ID: {user.id.substring(0, 8)}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1 text-sm">
+                              <Mail className="h-3 w-3" />
+                              {user.email}
+                            </div>
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <Phone className="h-3 w-3" />
+                              {user.phone || 'N/A'}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{getKycBadge(user.kyc_status)}</TableCell>
+                        <TableCell className="font-medium">₹{user.balance.toFixed(2)}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {new Date(user.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <Button variant="ghost" size="sm" onClick={() => { setSelectedUser(user); setKycModalOpen(true); }}>
+                              <Eye className="h-4 w-4 mr-1" />KYC
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => { setSelectedUser(user); setEditModalOpen(true); }}>
+                              <Edit className="h-4 w-4 mr-1" />Edit
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleLoginAsUser(user.user_id)}>
+                              <LogIn className="h-4 w-4 mr-1" />Login
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TabsContent>
+
+            {/* Email Unverified Tab */}
+            <TabsContent value="email_unverified" className="space-y-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>KYC</TableHead>
+                    <TableHead>Balance</TableHead>
+                    <TableHead>Joined</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.filter(u => u.status === 'email_unverified' && (!searchTerm || u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase()))).length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8">
+                        <p className="text-muted-foreground">No email unverified users found</p>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    users.filter(u => u.status === 'email_unverified' && (!searchTerm || u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase()))).map((user) => (
+                      <TableRow key={user.id} className="hover:bg-accent/50">
+                        <TableCell>
+                          <div>
+                            <p className="font-medium text-foreground">{user.name}</p>
+                            <p className="text-sm text-muted-foreground">ID: {user.id.substring(0, 8)}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1 text-sm">
+                              <Mail className="h-3 w-3" />
+                              {user.email}
+                            </div>
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <Phone className="h-3 w-3" />
+                              {user.phone || 'N/A'}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{getKycBadge(user.kyc_status)}</TableCell>
+                        <TableCell className="font-medium">₹{user.balance.toFixed(2)}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {new Date(user.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <Button variant="ghost" size="sm" onClick={() => { setSelectedUser(user); setKycModalOpen(true); }}>
+                              <Eye className="h-4 w-4 mr-1" />KYC
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => { setSelectedUser(user); setEditModalOpen(true); }}>
+                              <Edit className="h-4 w-4 mr-1" />Edit
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleLoginAsUser(user.user_id)}>
+                              <LogIn className="h-4 w-4 mr-1" />Login
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TabsContent>
+
+            {/* Mobile Unverified Tab */}
+            <TabsContent value="mobile_unverified" className="space-y-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>KYC</TableHead>
+                    <TableHead>Balance</TableHead>
+                    <TableHead>Joined</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.filter(u => u.status === 'mobile_unverified' && (!searchTerm || u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase()))).length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8">
+                        <p className="text-muted-foreground">No mobile unverified users found</p>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    users.filter(u => u.status === 'mobile_unverified' && (!searchTerm || u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase()))).map((user) => (
+                      <TableRow key={user.id} className="hover:bg-accent/50">
+                        <TableCell>
+                          <div>
+                            <p className="font-medium text-foreground">{user.name}</p>
+                            <p className="text-sm text-muted-foreground">ID: {user.id.substring(0, 8)}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1 text-sm">
+                              <Mail className="h-3 w-3" />
+                              {user.email}
+                            </div>
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <Phone className="h-3 w-3" />
+                              {user.phone || 'N/A'}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{getKycBadge(user.kyc_status)}</TableCell>
+                        <TableCell className="font-medium">₹{user.balance.toFixed(2)}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {new Date(user.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <Button variant="ghost" size="sm" onClick={() => { setSelectedUser(user); setKycModalOpen(true); }}>
+                              <Eye className="h-4 w-4 mr-1" />KYC
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => { setSelectedUser(user); setEditModalOpen(true); }}>
+                              <Edit className="h-4 w-4 mr-1" />Edit
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleLoginAsUser(user.user_id)}>
+                              <LogIn className="h-4 w-4 mr-1" />Login
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TabsContent>
+
+            {/* KYC Pending Tab */}
+            <TabsContent value="kyc_pending" className="space-y-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Balance</TableHead>
+                    <TableHead>Joined</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.filter(u => u.kyc_status === 'pending' && (!searchTerm || u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase()))).length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8">
+                        <p className="text-muted-foreground">No KYC pending users found</p>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    users.filter(u => u.kyc_status === 'pending' && (!searchTerm || u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase()))).map((user) => (
+                      <TableRow key={user.id} className="hover:bg-accent/50">
+                        <TableCell>
+                          <div>
+                            <p className="font-medium text-foreground">{user.name}</p>
+                            <p className="text-sm text-muted-foreground">ID: {user.id.substring(0, 8)}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1 text-sm">
+                              <Mail className="h-3 w-3" />
+                              {user.email}
+                            </div>
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <Phone className="h-3 w-3" />
+                              {user.phone || 'N/A'}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(user.status)}</TableCell>
+                        <TableCell className="font-medium">₹{user.balance.toFixed(2)}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {new Date(user.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <Button variant="ghost" size="sm" onClick={() => { setSelectedUser(user); setKycModalOpen(true); }}>
+                              <Eye className="h-4 w-4 mr-1" />KYC
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => { setSelectedUser(user); setEditModalOpen(true); }}>
+                              <Edit className="h-4 w-4 mr-1" />Edit
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleLoginAsUser(user.user_id)}>
+                              <LogIn className="h-4 w-4 mr-1" />Login
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TabsContent>
+
+            {/* With Balance Tab */}
+            <TabsContent value="with_balance" className="space-y-4">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>KYC</TableHead>
+                    <TableHead>Balance</TableHead>
+                    <TableHead>Joined</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.filter(u => u.balance > 0 && (!searchTerm || u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase()))).length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8">
+                        <p className="text-muted-foreground">No users with balance found</p>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    users.filter(u => u.balance > 0 && (!searchTerm || u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase()))).map((user) => (
+                      <TableRow key={user.id} className="hover:bg-accent/50">
+                        <TableCell>
+                          <div>
+                            <p className="font-medium text-foreground">{user.name}</p>
+                            <p className="text-sm text-muted-foreground">ID: {user.id.substring(0, 8)}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1 text-sm">
+                              <Mail className="h-3 w-3" />
+                              {user.email}
+                            </div>
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <Phone className="h-3 w-3" />
+                              {user.phone || 'N/A'}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(user.status)}</TableCell>
+                        <TableCell>{getKycBadge(user.kyc_status)}</TableCell>
+                        <TableCell className="font-medium">₹{user.balance.toFixed(2)}</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {new Date(user.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <Button variant="ghost" size="sm" onClick={() => { setSelectedUser(user); setKycModalOpen(true); }}>
+                              <Eye className="h-4 w-4 mr-1" />KYC
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => { setSelectedUser(user); setEditModalOpen(true); }}>
+                              <Edit className="h-4 w-4 mr-1" />Edit
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleLoginAsUser(user.user_id)}>
+                              <LogIn className="h-4 w-4 mr-1" />Login
                             </Button>
                           </div>
                         </TableCell>
@@ -395,50 +715,6 @@ const Users = () => {
         onOpenChange={setAddUserModalOpen}
         onUserAdded={refetch}
       />
-
-      {/* Balance Update Modal */}
-      {selectedUser && balanceModalOpen && (
-        <Dialog open={balanceModalOpen} onOpenChange={setBalanceModalOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
-                {balanceAction === 'add' ? 'Add' : 'Remove'} Balance
-              </DialogTitle>
-              <DialogDescription>
-                {balanceAction === 'add' ? 'Add' : 'Remove'} balance for {selectedUser.name}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Current Balance</Label>
-                <div className="text-2xl font-bold">₹{selectedUser.balance || 0}</div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="amount">Amount (₹)</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  value={balanceAmount}
-                  onChange={(e) => setBalanceAmount(e.target.value)}
-                  placeholder="Enter amount"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={() => {
-                setBalanceModalOpen(false);
-                setBalanceAmount("");
-              }}>
-                Cancel
-              </Button>
-              <Button onClick={handleBalanceUpdate}>
-                {balanceAction === 'add' ? 'Add' : 'Remove'} Balance
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
     </div>
   );
 };

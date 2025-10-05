@@ -12,8 +12,8 @@ interface User {
   total_earnings: number;
   completed_tasks: number;
   level: string;
-  status: 'active' | 'pending' | 'suspended';
-  kyc_status: 'pending' | 'verified' | 'rejected';
+  status: 'active' | 'pending' | 'suspended' | 'banned' | 'email_unverified' | 'mobile_unverified';
+  kyc_status: 'pending' | 'verified' | 'rejected' | 'unverified';
   created_at: string;
 }
 

@@ -22,12 +22,22 @@ interface KYCDetailsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   user: {
-    id: number;
+    id: string;
+    user_id: string;
     name: string;
     email: string;
-    phone: string;
-    kyc: string;
-    kycDetails?: {
+    phone: string | null;
+    status: string;
+    kyc_status: string;
+    balance: number;
+    bank_account_number?: string;
+    bank_name?: string;
+    bank_routing_number?: string;
+    bank_account_holder?: string;
+    bank_account_type?: string;
+    kyc_data?: any;
+    kyc_submitted_at?: string;
+    kyc_details?: {
       fullName: string;
       dateOfBirth: string;
       address: string;
@@ -44,6 +54,13 @@ interface KYCDetailsModalProps {
         selfie: string;
       };
       submittedAt: string;
+      bank?: {
+        accountNumber?: string;
+        bankName?: string;
+        routing?: string;
+        accountHolder?: string;
+        accountType?: string;
+      };
     };
   };
 }
@@ -71,24 +88,25 @@ export function KYCDetailsModal({ open, onOpenChange, user }: KYCDetailsModalPro
     }
   };
 
-  // Mock KYC details for demonstration
-  const kycDetails = user.kycDetails || {
+  // KYC details from database or mock data for demonstration
+  const kycData = user.kyc_data || user.kyc_details;
+  const kycDetails = kycData || {
     fullName: user.name,
     dateOfBirth: "1990-05-15",
     address: "123 Main Street, Andheri West",
     pincode: "400058",
     panNumber: "ABCDE1234F",
     aadharNumber: "1234 5678 9012",
-    bankAccount: "12345678901234",
-    ifscCode: "HDFC0001234",
+    bankAccount: user.bank_account_number || "12345678901234",
+    ifscCode: user.bank_routing_number || "HDFC0001234",
     documents: {
-      panCard: "/mock-documents/pan.jpg",
-      aadharFront: "/mock-documents/aadhar-front.jpg",
-      aadharBack: "/mock-documents/aadhar-back.jpg",
+      panCard: kycData?.documents?.frontUrl || "/mock-documents/pan.jpg",
+      aadharFront: kycData?.documents?.frontUrl || "/mock-documents/aadhar-front.jpg",
+      aadharBack: kycData?.documents?.backUrl || "/mock-documents/aadhar-back.jpg",
       bankStatement: "/mock-documents/bank-statement.pdf",
-      selfie: "/mock-documents/selfie.jpg"
+      selfie: kycData?.documents?.selfieUrl || "/mock-documents/selfie.jpg"
     },
-    submittedAt: "2024-01-15 10:30:00"
+    submittedAt: user.kyc_submitted_at || "2024-01-15 10:30:00"
   };
 
   return (
@@ -110,7 +128,7 @@ export function KYCDetailsModal({ open, onOpenChange, user }: KYCDetailsModalPro
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 User Information
-                {getKycStatusBadge(user.kyc)}
+                {getKycStatusBadge(user.kyc_status)}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -199,12 +217,24 @@ export function KYCDetailsModal({ open, onOpenChange, user }: KYCDetailsModalPro
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Account Number</label>
-                  <p className="text-sm font-medium font-mono">{kycDetails.bankAccount}</p>
+                  <label className="text-sm font-medium text-muted-foreground">Account Holder</label>
+                  <p className="text-sm font-medium">{user.bank_account_holder || kycData?.bank?.accountHolder || 'N/A'}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">IFSC Code</label>
-                  <p className="text-sm font-medium font-mono">{kycDetails.ifscCode}</p>
+                  <label className="text-sm font-medium text-muted-foreground">Account Number</label>
+                  <p className="text-sm font-medium font-mono">{user.bank_account_number || kycData?.bank?.accountNumber || kycDetails.bankAccount}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Bank Name</label>
+                  <p className="text-sm font-medium">{user.bank_name || kycData?.bank?.bankName || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Routing/IFSC Code</label>
+                  <p className="text-sm font-medium font-mono">{user.bank_routing_number || kycData?.bank?.routing || kycDetails.ifscCode}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Account Type</label>
+                  <p className="text-sm font-medium">{user.bank_account_type || kycData?.bank?.accountType || 'N/A'}</p>
                 </div>
               </div>
             </CardContent>
@@ -242,7 +272,7 @@ export function KYCDetailsModal({ open, onOpenChange, user }: KYCDetailsModalPro
 
           {/* Actions */}
           <div className="flex items-center justify-end gap-2 pt-4 border-t">
-            {user.kyc === "pending" && (
+            {user.kyc_status === "pending" && (
               <>
                 <Button variant="outline" className="text-destructive border-destructive hover:bg-destructive/10">
                   <XCircle className="h-4 w-4 mr-2" />
@@ -254,7 +284,7 @@ export function KYCDetailsModal({ open, onOpenChange, user }: KYCDetailsModalPro
                 </Button>
               </>
             )}
-            {user.kyc === "verified" && (
+            {user.kyc_status === "verified" && (
               <Button variant="outline" className="text-warning border-warning hover:bg-warning/10">
                 Request Re-verification
               </Button>

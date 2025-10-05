@@ -34,6 +34,7 @@ export function UserEditModal({ open, onOpenChange, user, onUserUpdate }: UserEd
 
   const [adjustAmount, setAdjustAmount] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showBalanceSection, setShowBalanceSection] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -221,37 +222,50 @@ export function UserEditModal({ open, onOpenChange, user, onUserUpdate }: UserEd
             </div>
 
             <div className="space-y-2">
-              <Label>Account Balance (₹)</Label>
-              <Input
-                type="number"
-                value={editForm.balance}
-                onChange={(e) => setEditForm({ ...editForm, balance: e.target.value })}
-              />
-              <div className="flex items-center gap-2 mt-2">
-                <Input
-                  placeholder="Enter amount"
-                  type="number"
-                  value={adjustAmount}
-                  onChange={(e) => setAdjustAmount(e.target.value)}
-                  className="flex-1"
-                />
-                <Button
-                  variant="default"
-                  onClick={() => handleBalanceChange("add")}
-                  disabled={loading}
+              <div className="flex items-center justify-between">
+                <Label>Account Balance</Label>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setShowBalanceSection(!showBalanceSection)}
                 >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => handleBalanceChange("remove")}
-                  disabled={loading}
-                >
-                  <Minus className="h-4 w-4 mr-1" />
-                  Remove
+                  {showBalanceSection ? 'Hide' : 'Adjust'} Balance
                 </Button>
               </div>
+              <div className="text-2xl font-bold text-foreground">₹{editForm.balance}</div>
+              
+              {showBalanceSection && (
+                <div className="space-y-3 p-4 bg-accent/20 rounded-lg mt-3">
+                  <Label htmlFor="adjustAmount">Adjust Balance Amount (₹)</Label>
+                  <Input
+                    id="adjustAmount"
+                    placeholder="Enter amount"
+                    type="number"
+                    value={adjustAmount}
+                    onChange={(e) => setAdjustAmount(e.target.value)}
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      variant="default"
+                      onClick={() => handleBalanceChange("add")}
+                      disabled={loading}
+                      className="flex-1"
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add to Balance
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={() => handleBalanceChange("remove")}
+                      disabled={loading}
+                      className="flex-1"
+                    >
+                      <Minus className="h-4 w-4 mr-1" />
+                      Remove from Balance
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

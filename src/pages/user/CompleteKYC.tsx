@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Upload, FileText, Check, AlertCircle, User, Camera, CreditCard, CheckCircle } from "lucide-react";
+import { Upload, FileText, Check, AlertCircle, User, Camera, CreditCard, CheckCircle, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -196,6 +196,54 @@ export default function CompleteKYC() {
           </Badge>
         </div>
       </div>
+
+      {kycStatus === "pending" && (
+        <Card className="bg-warning/10 border-warning/20">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-warning" />
+              <div>
+                <p className="font-semibold text-warning">KYC Submitted - Pending Approval</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Your documents are under review. We'll notify you once verification is complete.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {kycStatus === "verified" && (
+        <Card className="bg-success/10 border-success/20">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-success" />
+              <div>
+                <p className="font-semibold text-success">KYC Verified</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Your identity has been successfully verified.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {kycStatus === "rejected" && (
+        <Card className="bg-destructive/10 border-destructive/20">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-destructive" />
+              <div>
+                <p className="font-semibold text-destructive">KYC Rejected</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Please check your documents and submit again.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Progress Steps */}
       <div className="mb-8">

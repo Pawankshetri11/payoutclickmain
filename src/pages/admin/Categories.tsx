@@ -23,12 +23,8 @@ import {
   Plus,
   Edit,
   Trash2,
-  FileText,
   Folder,
-  Tag,
-  Star,
-  Globe,
-  Smartphone
+  FileText
 } from "lucide-react";
 
 const Categories = () => {
@@ -40,8 +36,7 @@ const Categories = () => {
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: "",
-    description: "",
-    icon: "Folder"
+    description: ""
   });
 
   useEffect(() => {
@@ -73,13 +68,16 @@ const Categories = () => {
         return;
       }
 
+      // Optional custom short ID (instead of UUID)
+      const service_id = "CAT-" + Math.floor(100000 + Math.random() * 900000);
+
       const { error } = await (supabase as any)
         .from("job_categories")
         .insert([
           {
             name: formData.name,
             description: formData.description,
-            icon: formData.icon,
+            service_id
           },
         ]);
 
@@ -87,7 +85,7 @@ const Categories = () => {
 
       toast.success("Category created successfully");
       setNewCategoryOpen(false);
-      setFormData({ name: "", description: "", icon: "Folder" });
+      setFormData({ name: "", description: "" });
       fetchCategories();
     } catch (error: any) {
       console.error("Error creating category:", error);
@@ -106,8 +104,7 @@ const Categories = () => {
         .from("job_categories")
         .update({
           name: formData.name,
-          description: formData.description,
-          icon: formData.icon,
+          description: formData.description
         })
         .eq("id", selectedCategory.id);
 
@@ -146,28 +143,6 @@ const Categories = () => {
     cat.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Dynamic icon mapping (you can add more here if needed)
-  const icons = {
-    Folder,
-    FileText,
-    Tag,
-    Plus,
-    Edit,
-    Trash2,
-    Filter,
-    Search,
-    FolderTree,
-    Star,
-    Globe,
-    Smartphone,
-  };
-
-  // Helper to safely get icon by name (case-insensitive)
-  const getIcon = (name: string) => {
-    const formatted = name?.charAt(0).toUpperCase() + name?.slice(1).toLowerCase();
-    return icons[formatted as keyof typeof icons] || Folder;
-  };
-
   return (
     <div className="p-6 space-y-6">
       {/* Page Header */}
@@ -193,9 +168,7 @@ const Categories = () => {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Create New Category</DialogTitle>
-              <DialogDescription>
-                Add a new job category for organizing tasks
-              </DialogDescription>
+              <DialogDescription>Add a new job category</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
@@ -219,20 +192,6 @@ const Categories = () => {
                     setFormData({ ...formData, description: e.target.value })
                   }
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="icon">Icon Name (Lucide)</Label>
-                <Input
-                  id="icon"
-                  placeholder="e.g., Star, Smartphone, Globe"
-                  value={formData.icon}
-                  onChange={(e) =>
-                    setFormData({ ...formData, icon: e.target.value })
-                  }
-                />
-                <p className="text-xs text-muted-foreground">
-                  Try icons like: Folder, FileText, Tag, Star, Globe, Smartphone
-                </p>
               </div>
               <div className="flex justify-end gap-2">
                 <Button
@@ -275,16 +234,6 @@ const Categories = () => {
                   }
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-icon">Icon Name</Label>
-                <Input
-                  id="edit-icon"
-                  value={formData.icon}
-                  onChange={(e) =>
-                    setFormData({ ...formData, icon: e.target.value })
-                  }
-                />
-              </div>
               <div className="flex justify-end gap-2">
                 <Button
                   variant="outline"
@@ -300,7 +249,7 @@ const Categories = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="bg-gradient-card border-border/50 shadow-elegant">
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
@@ -353,7 +302,7 @@ const Categories = () => {
               <TableRow>
                 <TableHead>Category</TableHead>
                 <TableHead>Description</TableHead>
-                <TableHead>Icon</TableHead>
+                <TableHead>Service ID</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -374,64 +323,54 @@ const Categories = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredCategories.map((category) => {
-                  const IconComponent = getIcon(category.icon);
-                  return (
-                    <TableRow key={category.id} className="hover:bg-accent/50">
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <IconComponent className="h-5 w-5 text-primary" />
-                          <div>
-                            <p className="font-medium text-foreground">{category.name}</p>
-                            <p className="text-xs text-muted-foreground">{category.id.slice(0, 8)}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <p className="text-sm text-muted-foreground max-w-xs truncate">
-                          {category.description || "No description"}
-                        </p>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="text-xs">
-                          {category.icon}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {new Date(category.created_at).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedCategory(category);
-                              setFormData({
-                                name: category.name,
-                                description: category.description || "",
-                                icon: category.icon || "Folder",
-                              });
-                              setEditCategoryOpen(true);
-                            }}
-                          >
-                            <Edit className="h-4 w-4 mr-1" />
-                            Edit
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => handleDeleteCategory(category.id)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            Delete
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
+                filteredCategories.map((category) => (
+                  <TableRow key={category.id} className="hover:bg-accent/50">
+                    <TableCell>
+                      <p className="font-medium text-foreground">{category.name}</p>
+                    </TableCell>
+                    <TableCell>
+                      <p className="text-sm text-muted-foreground max-w-xs truncate">
+                        {category.description || "No description"}
+                      </p>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">
+                        {category.service_id || category.id.slice(0, 8)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {new Date(category.created_at).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedCategory(category);
+                            setFormData({
+                              name: category.name,
+                              description: category.description || ""
+                            });
+                            setEditCategoryOpen(true);
+                          }}
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleDeleteCategory(category.id)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Delete
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>

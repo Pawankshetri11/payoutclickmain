@@ -26,6 +26,9 @@ import {
   FileText,
   Folder,
   Tag,
+  Star,
+  Globe,
+  Smartphone
 } from "lucide-react";
 
 const Categories = () => {
@@ -49,15 +52,15 @@ const Categories = () => {
     try {
       setLoading(true);
       const { data, error } = await (supabase as any)
-        .from('job_categories')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .from("job_categories")
+        .select("*")
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
       setCategories(data || []);
     } catch (error: any) {
-      console.error('Error fetching categories:', error);
-      toast.error('Failed to load categories');
+      console.error("Error fetching categories:", error);
+      toast.error("Failed to load categories");
     } finally {
       setLoading(false);
     }
@@ -66,97 +69,104 @@ const Categories = () => {
   const handleCreateCategory = async () => {
     try {
       if (!formData.name) {
-        toast.error('Category name is required');
+        toast.error("Category name is required");
         return;
       }
 
       const { error } = await (supabase as any)
-        .from('job_categories')
-        .insert([{
-          name: formData.name,
-          description: formData.description,
-          icon: formData.icon
-        }]);
+        .from("job_categories")
+        .insert([
+          {
+            name: formData.name,
+            description: formData.description,
+            icon: formData.icon,
+          },
+        ]);
 
       if (error) throw error;
 
-      toast.success('Category created successfully');
+      toast.success("Category created successfully");
       setNewCategoryOpen(false);
       setFormData({ name: "", description: "", icon: "Folder" });
       fetchCategories();
     } catch (error: any) {
-      console.error('Error creating category:', error);
-      toast.error('Failed to create category');
+      console.error("Error creating category:", error);
+      toast.error("Failed to create category");
     }
   };
 
   const handleUpdateCategory = async () => {
     try {
       if (!selectedCategory || !formData.name) {
-        toast.error('Category name is required');
+        toast.error("Category name is required");
         return;
       }
 
       const { error } = await (supabase as any)
-        .from('job_categories')
+        .from("job_categories")
         .update({
           name: formData.name,
           description: formData.description,
-          icon: formData.icon
+          icon: formData.icon,
         })
-        .eq('id', selectedCategory.id);
+        .eq("id", selectedCategory.id);
 
       if (error) throw error;
 
-      toast.success('Category updated successfully');
+      toast.success("Category updated successfully");
       setEditCategoryOpen(false);
       setSelectedCategory(null);
       fetchCategories();
     } catch (error: any) {
-      console.error('Error updating category:', error);
-      toast.error('Failed to update category');
+      console.error("Error updating category:", error);
+      toast.error("Failed to update category");
     }
   };
 
   const handleDeleteCategory = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this category?')) return;
+    if (!confirm("Are you sure you want to delete this category?")) return;
 
     try {
       const { error } = await (supabase as any)
-        .from('job_categories')
+        .from("job_categories")
         .delete()
-        .eq('id', id);
+        .eq("id", id);
 
       if (error) throw error;
 
-      toast.success('Category deleted successfully');
+      toast.success("Category deleted successfully");
       fetchCategories();
     } catch (error: any) {
-      console.error('Error deleting category:', error);
-      toast.error('Failed to delete category');
+      console.error("Error deleting category:", error);
+      toast.error("Failed to delete category");
     }
   };
 
-  const handleToggleStatus = async (id: string, currentStatus: boolean) => {
-    try {
-      const { error } = await (supabase as any)
-        .from('job_categories')
-        .update({ is_active: !currentStatus })
-        .eq('id', id);
-
-      if (error) throw error;
-
-      toast.success(`Category ${!currentStatus ? 'activated' : 'deactivated'}`);
-      fetchCategories();
-    } catch (error: any) {
-      console.error('Error updating status:', error);
-      toast.error('Failed to update status');
-    }
-  };
-
-  const filteredCategories = categories.filter(cat =>
+  const filteredCategories = categories.filter((cat) =>
     cat.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Dynamic icon mapping (you can add more here if needed)
+  const icons = {
+    Folder,
+    FileText,
+    Tag,
+    Plus,
+    Edit,
+    Trash2,
+    Filter,
+    Search,
+    FolderTree,
+    Star,
+    Globe,
+    Smartphone,
+  };
+
+  // Helper to safely get icon by name (case-insensitive)
+  const getIcon = (name: string) => {
+    const formatted = name?.charAt(0).toUpperCase() + name?.slice(1).toLowerCase();
+    return icons[formatted as keyof typeof icons] || Folder;
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -167,8 +177,12 @@ const Categories = () => {
             <FolderTree className="h-8 w-8 text-primary" />
             Category Management
           </h1>
-          <p className="text-muted-foreground">Manage job categories, subcategories, and file types</p>
+          <p className="text-muted-foreground">
+            Manage job categories and organize them easily
+          </p>
         </div>
+
+        {/* Add Category Button */}
         <Dialog open={newCategoryOpen} onOpenChange={setNewCategoryOpen}>
           <DialogTrigger asChild>
             <Button className="bg-gradient-primary hover:opacity-90 shadow-glow">
@@ -179,7 +193,9 @@ const Categories = () => {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Create New Category</DialogTitle>
-              <DialogDescription>Add a new job category for organizing tasks</DialogDescription>
+              <DialogDescription>
+                Add a new job category for organizing tasks
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
@@ -188,7 +204,9 @@ const Categories = () => {
                   id="name"
                   placeholder="e.g., Reviews, App Install"
                   value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                 />
               </div>
               <div className="space-y-2">
@@ -197,7 +215,9 @@ const Categories = () => {
                   id="description"
                   placeholder="Brief description of this category"
                   value={formData.description}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
                 />
               </div>
               <div className="space-y-2">
@@ -206,17 +226,28 @@ const Categories = () => {
                   id="icon"
                   placeholder="e.g., Star, Smartphone, Globe"
                   value={formData.icon}
-                  onChange={(e) => setFormData({...formData, icon: e.target.value})}
+                  onChange={(e) =>
+                    setFormData({ ...formData, icon: e.target.value })
+                  }
                 />
+                <p className="text-xs text-muted-foreground">
+                  Try icons like: Folder, FileText, Tag, Star, Globe, Smartphone
+                </p>
               </div>
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setNewCategoryOpen(false)}>Cancel</Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setNewCategoryOpen(false)}
+                >
+                  Cancel
+                </Button>
                 <Button onClick={handleCreateCategory}>Create</Button>
               </div>
             </div>
           </DialogContent>
         </Dialog>
 
+        {/* Edit Category Dialog */}
         <Dialog open={editCategoryOpen} onOpenChange={setEditCategoryOpen}>
           <DialogContent>
             <DialogHeader>
@@ -229,7 +260,9 @@ const Categories = () => {
                 <Input
                   id="edit-name"
                   value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                 />
               </div>
               <div className="space-y-2">
@@ -237,7 +270,9 @@ const Categories = () => {
                 <Textarea
                   id="edit-description"
                   value={formData.description}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  onChange={(e) =>
+                    setFormData({ ...formData, description: e.target.value })
+                  }
                 />
               </div>
               <div className="space-y-2">
@@ -245,11 +280,18 @@ const Categories = () => {
                 <Input
                   id="edit-icon"
                   value={formData.icon}
-                  onChange={(e) => setFormData({...formData, icon: e.target.value})}
+                  onChange={(e) =>
+                    setFormData({ ...formData, icon: e.target.value })
+                  }
                 />
               </div>
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setEditCategoryOpen(false)}>Cancel</Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setEditCategoryOpen(false)}
+                >
+                  Cancel
+                </Button>
                 <Button onClick={handleUpdateCategory}>Update</Button>
               </div>
             </div>
@@ -258,7 +300,7 @@ const Categories = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card className="bg-gradient-card border-border/50 shadow-elegant">
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
@@ -266,34 +308,6 @@ const Categories = () => {
               <div>
                 <p className="text-sm text-muted-foreground">Total Categories</p>
                 <p className="text-xl font-bold text-primary">{categories.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-card border-border/50 shadow-elegant">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <FolderTree className="h-5 w-5 text-success" />
-              <div>
-                <p className="text-sm text-muted-foreground">Active Categories</p>
-                <p className="text-xl font-bold text-success">
-                  {categories.filter(c => c.is_active).length}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-card border-border/50 shadow-elegant">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Tag className="h-5 w-5 text-info" />
-              <div>
-                <p className="text-sm text-muted-foreground">Inactive</p>
-                <p className="text-xl font-bold text-info">
-                  {categories.filter(c => !c.is_active).length}
-                </p>
               </div>
             </div>
           </CardContent>
@@ -340,7 +354,6 @@ const Categories = () => {
                 <TableHead>Category</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Icon</TableHead>
-                <TableHead>Status</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -348,7 +361,7 @@ const Categories = () => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
+                  <TableCell colSpan={5} className="text-center py-8">
                     <div className="flex justify-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                     </div>
@@ -356,80 +369,69 @@ const Categories = () => {
                 </TableRow>
               ) : filteredCategories.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                     No categories found
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredCategories.map((category) => (
-                  <TableRow key={category.id} className="hover:bg-accent/50">
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Folder className="h-5 w-5 text-primary" />
-                        <div>
-                          <p className="font-medium text-foreground">{category.name}</p>
-                          <p className="text-xs text-muted-foreground">{category.id.slice(0, 8)}</p>
+                filteredCategories.map((category) => {
+                  const IconComponent = getIcon(category.icon);
+                  return (
+                    <TableRow key={category.id} className="hover:bg-accent/50">
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <IconComponent className="h-5 w-5 text-primary" />
+                          <div>
+                            <p className="font-medium text-foreground">{category.name}</p>
+                            <p className="text-xs text-muted-foreground">{category.id.slice(0, 8)}</p>
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <p className="text-sm text-muted-foreground max-w-xs truncate">
-                        {category.description || 'No description'}
-                      </p>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="text-xs">
-                        {category.icon}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {category.is_active ? (
-                        <Badge className="bg-success/10 text-success border-success/20">Active</Badge>
-                      ) : (
-                        <Badge variant="outline" className="border-muted text-muted-foreground">Inactive</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {new Date(category.created_at).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => {
-                            setSelectedCategory(category);
-                            setFormData({
-                              name: category.name,
-                              description: category.description || "",
-                              icon: category.icon || "Folder"
-                            });
-                            setEditCategoryOpen(true);
-                          }}
-                        >
-                          <Edit className="h-4 w-4 mr-1" />
-                          Edit
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleToggleStatus(category.id, category.is_active)}
-                        >
-                          {category.is_active ? 'Deactivate' : 'Activate'}
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => handleDeleteCategory(category.id)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          Delete
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                      </TableCell>
+                      <TableCell>
+                        <p className="text-sm text-muted-foreground max-w-xs truncate">
+                          {category.description || "No description"}
+                        </p>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="text-xs">
+                          {category.icon}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(category.created_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedCategory(category);
+                              setFormData({
+                                name: category.name,
+                                description: category.description || "",
+                                icon: category.icon || "Folder",
+                              });
+                              setEditCategoryOpen(true);
+                            }}
+                          >
+                            <Edit className="h-4 w-4 mr-1" />
+                            Edit
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteCategory(category.id)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Delete
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
               )}
             </TableBody>
           </Table>

@@ -10,6 +10,11 @@ CREATE TABLE IF NOT EXISTS public.job_codes (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Add balance and total_earned columns to profiles if they don't exist
+ALTER TABLE public.profiles 
+ADD COLUMN IF NOT EXISTS balance DECIMAL(10,2) DEFAULT 0,
+ADD COLUMN IF NOT EXISTS total_earned DECIMAL(10,2) DEFAULT 0;
+
 -- Create index for faster lookups
 CREATE INDEX IF NOT EXISTS idx_job_codes_job_id ON public.job_codes(job_id);
 CREATE INDEX IF NOT EXISTS idx_job_codes_code ON public.job_codes(code);

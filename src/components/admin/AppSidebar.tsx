@@ -49,6 +49,12 @@ const navigationItems = [
     url: "/admin/jobs",
     icon: Briefcase,
   },
+    {
+    title: "Business Profiles",
+    url: "/admin/review-profiles",
+    icon: Building2,
+  },
+
   {
     title: "Users",
     url: "/admin/users",
@@ -93,11 +99,6 @@ const navigationItems = [
     title: "Content Editor",
     url: "/admin/content-editor",
     icon: FileText,
-  },
-  {
-    title: "Business Profiles",
-    url: "/review-profiles",
-    icon: Building2,
   },
   {
     title: "Settings",

@@ -188,12 +188,11 @@ const Users = () => {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="all" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-7">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="all">All Users</TabsTrigger>
               <TabsTrigger value="active">Active</TabsTrigger>
               <TabsTrigger value="banned">Banned</TabsTrigger>
               <TabsTrigger value="email_unverified">Email Unverified</TabsTrigger>
-              <TabsTrigger value="mobile_unverified">Mobile Unverified</TabsTrigger>
               <TabsTrigger value="kyc_pending">KYC Pending</TabsTrigger>
               <TabsTrigger value="with_balance">With Balance</TabsTrigger>
             </TabsList>
@@ -353,6 +352,26 @@ const Users = () => {
                             <Button variant="ghost" size="sm" onClick={() => handleLoginAsUser(user.user_id, user.email)}>
                               <LogIn className="h-4 w-4 mr-1" />Login
                             </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              onClick={async () => {
+                                if (!confirm(`Are you sure you want to delete user ${user.name}?`)) return;
+                                try {
+                                  const { error } = await supabase.auth.admin.deleteUser(user.user_id);
+                                  if (error) throw error;
+                                  toast.success('User deleted successfully');
+                                  refetch();
+                                } catch (error: any) {
+                                  console.error('Delete error:', error);
+                                  toast.error('Failed to delete user');
+                                }
+                              }}
+                            >
+                              <Ban className="h-4 w-4 mr-1" />
+                              Delete
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -494,70 +513,10 @@ const Users = () => {
               </Table>
             </TabsContent>
 
-            {/* Mobile Unverified Tab */}
             <TabsContent value="mobile_unverified" className="space-y-4">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>KYC</TableHead>
-                    <TableHead>Balance</TableHead>
-                    <TableHead>Joined</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {users.filter(u => u.status === 'mobile_unverified' && (!searchTerm || u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase()))).length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
-                        <p className="text-muted-foreground">No mobile unverified users found</p>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    users.filter(u => u.status === 'mobile_unverified' && (!searchTerm || u.name.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase()))).map((user) => (
-                      <TableRow key={user.id} className="hover:bg-accent/50">
-                        <TableCell>
-                          <div>
-                            <p className="font-medium text-foreground">{user.name}</p>
-                            <p className="text-sm text-muted-foreground">ID: {user.id.substring(0, 8)}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-1 text-sm">
-                              <Mail className="h-3 w-3" />
-                              {user.email}
-                            </div>
-                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                              <Phone className="h-3 w-3" />
-                              {user.phone || 'N/A'}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>{getKycBadge(user.kyc_status)}</TableCell>
-                        <TableCell className="font-medium">₹{user.balance.toFixed(2)}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {new Date(user.created_at).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1 flex-wrap">
-                            <Button variant="ghost" size="sm" onClick={() => { setSelectedUser(user); setKycModalOpen(true); }}>
-                              <Eye className="h-4 w-4 mr-1" />KYC
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => { setSelectedUser(user); setEditModalOpen(true); }}>
-                              <Edit className="h-4 w-4 mr-1" />Edit
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleLoginAsUser(user.user_id, user.email)}>
-                              <LogIn className="h-4 w-4 mr-1" />Login
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">Mobile verification tab has been removed</p>
+              </div>
             </TabsContent>
 
             {/* KYC Pending Tab */}

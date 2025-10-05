@@ -2,6 +2,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -69,6 +71,7 @@ interface KYCDetailsModalProps {
 
 export function KYCDetailsModal({ open, onOpenChange, user }: KYCDetailsModalProps) {
   const [processing, setProcessing] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
   
   const getKycStatusBadge = (status: string) => {
     switch (status) {
@@ -136,42 +139,30 @@ export function KYCDetailsModal({ open, onOpenChange, user }: KYCDetailsModalPro
   };
   
   const handleReject = async () => {
+    if (!rejectionReason.trim()) {
+      toast.error('Please provide a rejection reason');
+      return;
+    }
+    
     try {
       setProcessing(true);
       const { error } = await supabase
         .from('profiles')
-        .update({ kyc_status: 'rejected' })
+        .update({ 
+          kyc_status: 'rejected',
+          kyc_rejection_reason: rejectionReason
+        })
         .eq('user_id', user.user_id);
       
       if (error) throw error;
       
       toast.success('KYC rejected - user can resubmit');
+      setRejectionReason("");
       onOpenChange(false);
       window.location.reload();
     } catch (error: any) {
       console.error('Error rejecting KYC:', error);
       toast.error('Failed to reject KYC');
-    } finally {
-      setProcessing(false);
-    }
-  };
-  
-  const handleRequestReverification = async () => {
-    try {
-      setProcessing(true);
-      const { error } = await supabase
-        .from('profiles')
-        .update({ kyc_status: 'pending' })
-        .eq('user_id', user.user_id);
-      
-      if (error) throw error;
-      
-      toast.success('Re-verification requested');
-      onOpenChange(false);
-      window.location.reload();
-    } catch (error: any) {
-      console.error('Error requesting re-verification:', error);
-      toast.error('Failed to request re-verification');
     } finally {
       setProcessing(false);
     }
@@ -221,9 +212,12 @@ export function KYCDetailsModal({ open, onOpenChange, user }: KYCDetailsModalPro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>KYC Details - {user.name}</DialogTitle>
+          <DialogTitle className="text-2xl font-bold">KYC Verification - {user.name}</DialogTitle>
+          <DialogDescription>
+            Review all KYC documents and payment methods carefully before approval
+          </DialogDescription>
         </DialogHeader>
 
         {!hasKycData ? (
@@ -232,36 +226,42 @@ export function KYCDetailsModal({ open, onOpenChange, user }: KYCDetailsModalPro
           </div>
         ) : (
           <div className="space-y-6">
-            {/* User Info */}
-            <div className="space-y-2">
-              <h3 className="text-lg font-semibold">User Information</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Name:</span>
-                  <p className="font-medium">{user.name}</p>
+            {/* User Info Card */}
+            <Card className="border-primary/20 bg-gradient-to-br from-background to-accent/5">
+              <CardContent className="pt-6">
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                  <User className="h-5 w-5 text-primary" />
+                  User Information
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Name:</span>
+                    <p className="font-semibold">{user.name}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Email:</span>
+                    <p className="font-semibold">{user.email}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Status:</span>
+                    <div className="mt-1">{getKycStatusBadge(user.kyc_status)}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Submitted:</span>
+                    <p className="font-semibold">
+                      {user.kyc_submitted_at ? new Date(user.kyc_submitted_at).toLocaleDateString() : 'N/A'}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-muted-foreground">Email:</span>
-                  <p className="font-medium">{user.email}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Status:</span>
-                  {getKycStatusBadge(user.kyc_status)}
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Submitted:</span>
-                  <p className="font-medium">
-                    {user.kyc_submitted_at ? new Date(user.kyc_submitted_at).toLocaleDateString() : 'N/A'}
-                  </p>
-                </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
             {/* Personal Details */}
             {kycData?.personal && (
-              <div className="space-y-2">
-                <h3 className="text-lg font-semibold">Personal Details</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+              <Card>
+                <CardContent className="pt-6">
+                  <h3 className="text-lg font-bold mb-4">Personal Details</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-muted-foreground">First Name:</span>
                     <p className="font-medium">{kycData.personal.firstName}</p>
@@ -283,14 +283,16 @@ export function KYCDetailsModal({ open, onOpenChange, user }: KYCDetailsModalPro
                     <p className="font-medium">{kycData.personal.phone}</p>
                   </div>
                 </div>
-              </div>
+                </CardContent>
+              </Card>
             )}
 
             {/* Address */}
             {kycData?.address && (
-              <div className="space-y-2">
-                <h3 className="text-lg font-semibold">Address</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+              <Card>
+                <CardContent className="pt-6">
+                  <h3 className="text-lg font-bold mb-4">Address Information</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-muted-foreground">Address:</span>
                     <p className="font-medium">{kycData.address.address}</p>
@@ -334,14 +336,16 @@ export function KYCDetailsModal({ open, onOpenChange, user }: KYCDetailsModalPro
                     </div>
                   </div>
                 )}
-              </div>
+                </CardContent>
+              </Card>
             )}
 
             {/* Documents */}
             {kycData?.documents && (
-              <div className="space-y-2">
-                <h3 className="text-lg font-semibold">Uploaded Documents</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card>
+                <CardContent className="pt-6">
+                  <h3 className="text-lg font-bold mb-4">Identity Documents</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {kycData.documents.frontUrl && (
                     <div>
                       <span className="text-muted-foreground text-sm">Front Document</span>
@@ -409,13 +413,18 @@ export function KYCDetailsModal({ open, onOpenChange, user }: KYCDetailsModalPro
                     </div>
                   )}
                 </div>
-              </div>
+                </CardContent>
+              </Card>
             )}
 
             {/* Payment Methods */}
-            <div className="space-y-2">
-              <h3 className="text-lg font-semibold">Withdrawal Methods</h3>
-              {paymentMethods.length > 0 ? (
+            <Card>
+              <CardContent className="pt-6">
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                  <Wallet className="h-5 w-5 text-primary" />
+                  Withdrawal Methods
+                </h3>
+                {paymentMethods.length > 0 ? (
                 <div className="space-y-3">
                   {paymentMethods.map((method) => (
                     <Card key={method.id} className={method.is_default ? 'border-primary' : ''}>
@@ -476,38 +485,57 @@ export function KYCDetailsModal({ open, onOpenChange, user }: KYCDetailsModalPro
                     </Card>
                   ))}
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">No payment methods added yet</p>
-              )}
-            </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No payment methods added yet</p>
+                )}
+              </CardContent>
+            </Card>
           </div>
+        )}
+
+        {/* Rejection Reason Input */}
+        {hasKycData && user.kyc_status === 'pending' && (
+          <Card className="border-destructive/20">
+            <CardContent className="pt-6">
+              <Label htmlFor="rejection-reason" className="text-base font-semibold">
+                Rejection Reason (Required for rejection)
+              </Label>
+              <Textarea
+                id="rejection-reason"
+                placeholder="Provide detailed reason for rejection..."
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                className="mt-2 min-h-[100px]"
+              />
+            </CardContent>
+          </Card>
         )}
 
         <DialogFooter className="gap-2 flex-wrap">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>
-          <Button 
-            variant="outline" 
-            onClick={handleRequestReverification} 
-            disabled={processing}
-          >
-            Request Re-verification
-          </Button>
-          <Button 
-            variant="destructive"
-            onClick={handleReject}
-            disabled={processing}
-          >
-            Reject
-          </Button>
-          <Button
-            onClick={handleApprove}
-            disabled={processing}
-            className="bg-success hover:bg-success/90"
-          >
-            Approve
-          </Button>
+          {hasKycData && user.kyc_status === 'pending' && (
+            <>
+              <Button 
+                variant="destructive"
+                onClick={handleReject}
+                disabled={processing || !rejectionReason.trim()}
+                className="gap-2"
+              >
+                <XCircle className="h-4 w-4" />
+                Reject KYC
+              </Button>
+              <Button
+                onClick={handleApprove}
+                disabled={processing}
+                className="bg-success hover:bg-success/90 gap-2"
+              >
+                <CheckCircle className="h-4 w-4" />
+                Approve KYC
+              </Button>
+            </>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

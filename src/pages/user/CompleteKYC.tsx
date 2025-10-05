@@ -245,9 +245,9 @@ export default function CompleteKYC() {
             <div className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-success" />
               <div>
-                <p className="font-semibold text-success">KYC Verified</p>
+                <p className="font-semibold text-success">KYC Verified ✓</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Your identity has been successfully verified.
+                  Your identity has been successfully verified. You can now access all features.
                 </p>
               </div>
             </div>
@@ -264,49 +264,50 @@ export default function CompleteKYC() {
                 <div>
                   <p className="font-semibold text-destructive">KYC Rejected</p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Your KYC was rejected. Please review and submit again with correct documents.
+                    Your KYC was rejected. Please review the rejection reason and submit again with correct documents.
                   </p>
+                  {(profile as any)?.kyc_rejection_reason && (
+                    <div className="mt-2 p-2 bg-destructive/5 border border-destructive/20 rounded">
+                      <p className="text-sm font-medium text-destructive">Rejection Reason:</p>
+                      <p className="text-sm text-muted-foreground">{(profile as any).kyc_rejection_reason}</p>
+                    </div>
+                  )}
                 </div>
               </div>
-              <Button 
-                onClick={() => {
-                  setCurrentStep(1);
-                }}
-                className="mt-2"
-              >
-                Resubmit KYC
-              </Button>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Progress Steps */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          {steps.map((step, index) => (
-            <div key={step.id} className="flex flex-col items-center">
-              <div 
-                className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                  currentStep >= step.id 
-                    ? "bg-blue-600 text-white" 
-                    : "bg-gray-200 text-gray-400"
-                }`}
-              >
-                <step.icon className="h-6 w-6" />
-              </div>
-              <span className="text-sm font-medium mt-2 text-center">{step.title}</span>
-              {index < steps.length - 1 && (
-                <div className="hidden md:block absolute h-0.5 bg-gray-200 w-24 mt-6" style={{ left: `${index * 25 + 12.5}%` }} />
-              )}
+      {/* Only show form if unverified or rejected */}
+      {(kycStatus === "unverified" || kycStatus === "rejected") && (
+        <>
+          {/* Progress Steps */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between">
+              {steps.map((step, index) => (
+                <div key={step.id} className="flex flex-col items-center">
+                  <div 
+                    className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                      currentStep >= step.id 
+                        ? "bg-blue-600 text-white" 
+                        : "bg-gray-200 text-gray-400"
+                    }`}
+                  >
+                    <step.icon className="h-6 w-6" />
+                  </div>
+                  <span className="text-sm font-medium mt-2 text-center">{step.title}</span>
+                  {index < steps.length - 1 && (
+                    <div className="hidden md:block absolute h-0.5 bg-gray-200 w-24 mt-6" style={{ left: `${index * 25 + 12.5}%` }} />
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        <Separator className="mt-8" />
-      </div>
+            <Separator className="mt-8" />
+          </div>
 
-      {/* Step Content */}
-      <div className="space-y-6">
+          {/* Step Content */}
+          <div className="space-y-6">
         {currentStep === 1 && (
           <Card>
             <CardHeader>
@@ -651,34 +652,38 @@ export default function CompleteKYC() {
         )}
       </div>
 
-      {/* Navigation Buttons */}
-      <div className="flex justify-between mt-8">
-        <Button 
-          variant="outline" 
-          onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
-          disabled={currentStep === 1}
-        >
-          Previous
-        </Button>
-        
-        {currentStep < 4 ? (
+      {/* Navigation Buttons - Only show when form is visible */}
+      {(kycStatus === "unverified" || kycStatus === "rejected") && (
+        <div className="flex justify-between mt-8">
           <Button 
-            onClick={handleNext}
-            className="bg-blue-600 hover:bg-blue-700"
-            disabled={uploading}
+            variant="outline" 
+            onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
+            disabled={currentStep === 1}
           >
-            {uploading ? 'Uploading...' : 'Next'}
+            Previous
           </Button>
-        ) : (
-          <Button 
-            onClick={handleSubmit}
-            className="bg-green-600 hover:bg-green-700"
-            disabled={uploading}
-          >
-            {uploading ? 'Submitting...' : 'Submit KYC'}
-          </Button>
-        )}
-      </div>
+          
+          {currentStep < 4 ? (
+            <Button 
+              onClick={handleNext}
+              className="bg-blue-600 hover:bg-blue-700"
+              disabled={uploading}
+            >
+              {uploading ? 'Uploading...' : 'Next'}
+            </Button>
+          ) : (
+            <Button 
+              onClick={handleSubmit}
+              className="bg-green-600 hover:bg-green-700"
+              disabled={uploading}
+            >
+              {uploading ? 'Submitting...' : 'Submit KYC'}
+            </Button>
+          )}
+        </div>
+      )}
+        </>
+      )}
     </div>
   );
 }

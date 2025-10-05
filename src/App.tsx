@@ -17,6 +17,7 @@ import Users from "./pages/admin/Users";
 import Jobs from "./pages/admin/Jobs";
 import Categories from "./pages/admin/Categories";
 import ReviewProfiles from "./pages/admin/ReviewProfiles";
+import TaskSubmissions from "./pages/admin/TaskSubmissions";
 
 import Withdrawals from "./pages/admin/Withdrawals";
 import ReferralSystem from "./pages/admin/ReferralSystem";
@@ -107,6 +108,7 @@ const App = () => (
                   <Route path="users" element={<Users />} />
                   <Route path="jobs" element={<Jobs />} />
                   <Route path="jobs/:jobId/codes" element={<JobCodeManager />} />
+                  <Route path="task-submissions" element={<TaskSubmissions />} />
                   <Route path="categories" element={<Categories />} />
                   <Route path="review-profiles" element={<ReviewProfiles />} />
                   

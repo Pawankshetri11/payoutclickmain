@@ -57,6 +57,7 @@ const Jobs = () => {
   const [editJobModalOpen, setEditJobModalOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [newJobData, setNewJobData] = useState({
     title: "",
@@ -80,13 +81,23 @@ const Jobs = () => {
   const fetchJobs = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('jobs')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const [jobsRes, categoriesRes] = await Promise.all([
+        supabase
+          .from('jobs')
+          .select('*')
+          .order('created_at', { ascending: false }),
+        (supabase as any)
+          .from('job_categories')
+          .select('*')
+          .eq('is_active', true)
+          .order('name', { ascending: true })
+      ]);
 
-      if (error) throw error;
-      setJobs(data || []);
+      if (jobsRes.error) throw jobsRes.error;
+      if (categoriesRes.error) throw categoriesRes.error;
+      
+      setJobs(jobsRes.data || []);
+      setCategories(categoriesRes.data || []);
     } catch (error: any) {
       console.error('Error fetching jobs:', error);
       toast.error('Failed to load jobs');
@@ -198,10 +209,10 @@ const Jobs = () => {
         title: editJobData.title,
         description: editJobData.description,
         category: editJobData.category || 'General',
-        type: 'image' as const,
+        type: editJobData.type,
         amount: parseFloat(editJobData.amount),
         vacancy: parseInt(editJobData.vacancy),
-        approval_required: true
+        approval_required: editJobData.type === 'image'
       };
 
       const { error } = await supabase
@@ -274,21 +285,35 @@ const Jobs = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="job-category">Category</Label>
-                  <Input
-                    id="job-category"
-                    placeholder="Enter category"
-                    value={newJobData.category}
-                    onChange={(e) => setNewJobData({...newJobData, category: e.target.value})}
-                  />
+                  <Select value={newJobData.category} onValueChange={(val) => setNewJobData({...newJobData, category: val})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               
               <div className="space-y-2">
                 <Label htmlFor="job-type">Job Type</Label>
-                <div className="p-3 bg-muted rounded-md">
-                  <span className="text-sm font-medium">Image Upload Only</span>
-                  <p className="text-xs text-muted-foreground">All jobs are configured for image upload tasks with manual approval</p>
-                </div>
+                <Select value={newJobData.type} onValueChange={(val: "code" | "image") => setNewJobData({...newJobData, type: val})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select job type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="code">Code Based (Auto-verify)</SelectItem>
+                    <SelectItem value="image">Image Based (Manual approval)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {newJobData.type === 'code' 
+                    ? 'Code tasks are verified automatically and earnings are credited immediately.' 
+                    : 'Image tasks require admin approval before earnings are credited.'}
+                </p>
               </div>
               
               <div className="space-y-2">
@@ -461,21 +486,35 @@ const Jobs = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-job-category">Category</Label>
-                  <Input
-                    id="edit-job-category"
-                    placeholder="Enter category"
-                    value={editJobData.category}
-                    onChange={(e) => setEditJobData({...editJobData, category: e.target.value})}
-                  />
+                  <Select value={editJobData.category} onValueChange={(val) => setEditJobData({...editJobData, category: val})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               
               <div className="space-y-2">
                 <Label htmlFor="edit-job-type">Job Type</Label>
-                <div className="p-3 bg-muted rounded-md">
-                  <span className="text-sm font-medium">Image Upload Only</span>
-                  <p className="text-xs text-muted-foreground">All jobs are configured for image upload tasks with manual approval</p>
-                </div>
+                <Select value={editJobData.type} onValueChange={(val: "code" | "image") => setEditJobData({...editJobData, type: val})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select job type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="code">Code Based (Auto-verify)</SelectItem>
+                    <SelectItem value="image">Image Based (Manual approval)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {editJobData.type === 'code' 
+                    ? 'Code tasks are verified automatically and earnings are credited immediately.' 
+                    : 'Image tasks require admin approval before earnings are credited.'}
+                </p>
               </div>
               
               <div className="space-y-2">

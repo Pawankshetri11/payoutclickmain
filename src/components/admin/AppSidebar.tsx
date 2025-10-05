@@ -13,7 +13,8 @@ import {
   Mail,
   Gift,
   FileText,
-  Building2
+  Building2,
+  CheckCircle
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -49,7 +50,12 @@ const navigationItems = [
     url: "/admin/jobs",
     icon: Briefcase,
   },
-    {
+  {
+    title: "Task Submissions",
+    url: "/admin/task-submissions",
+    icon: CheckCircle,
+  },
+  {
     title: "Business Profiles",
     url: "/admin/review-profiles",
     icon: Building2,

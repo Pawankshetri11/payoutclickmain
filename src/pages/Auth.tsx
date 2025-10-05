@@ -13,15 +13,14 @@ import { toast } from "sonner";
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
-  
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { signUp, signIn, signInWithGoogle } = useAuth();
 
   const [formData, setFormData] = useState({
     name: "",
-    email: "user@payoutclick.com",
-    password: "user123",
+    email: "",
+    password: "",
     phone: ""
   });
 
@@ -34,14 +33,6 @@ export default function Auth() {
         const email = formData.email.trim();
         const password = formData.password.trim();
 
-        // Demo login bypass
-        if (email === "user@payoutclick.com" && password === "user123") {
-          localStorage.setItem("is_logged_in", "true");
-          toast.success("Demo login successful!");
-          navigate("/user");
-          return;
-        }
-
         const { error } = await signIn(email, password);
         if (error) throw error;
         
@@ -53,7 +44,11 @@ export default function Auth() {
           return;
         }
         
-        const { error } = await signUp(formData.email.trim(), formData.password.trim(), formData.name.trim());
+        const { error } = await signUp(
+          formData.email.trim(),
+          formData.password.trim(),
+          formData.name.trim()
+        );
         if (error) throw error;
         
         toast.success("Account created! Please check your email to verify.");
@@ -91,7 +86,6 @@ export default function Auth() {
         </CardHeader>
         
         <CardContent>
-
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
               <div className="space-y-2">

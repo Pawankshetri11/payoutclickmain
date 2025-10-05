@@ -34,6 +34,7 @@ export function useEarnings() {
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
 
       // Fetch real earnings from approved tasks
       const { data: approvedTasks, error } = await supabase
@@ -44,6 +45,7 @@ export function useEarnings() {
 
       if (error) throw error;
 
+      // Current month earnings (not yet in balance)
       const todayEarning = (approvedTasks || [])
         .filter(t => new Date(t.approved_at || '') >= today)
         .reduce((sum, t) => sum + t.amount, 0);
@@ -54,6 +56,11 @@ export function useEarnings() {
 
       const monthEarning = (approvedTasks || [])
         .filter(t => new Date(t.approved_at || '') >= monthStart)
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      // Balance = earnings from previous months (available for withdrawal)
+      const balance = (approvedTasks || [])
+        .filter(t => new Date(t.approved_at || '') <= previousMonthEnd)
         .reduce((sum, t) => sum + t.amount, 0);
 
       const totalEarned = (approvedTasks || []).reduce((sum, t) => sum + t.amount, 0);
@@ -67,18 +74,11 @@ export function useEarnings() {
 
       const pendingPayments = (pendingTasks || []).reduce((sum, t) => sum + t.amount, 0);
 
-      // Get current balance from profile
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('balance')
-        .eq('user_id', user.id)
-        .single();
-
       setEarnings({
         todayEarning,
         weekEarning,
         monthEarning,
-        balance: profile?.balance || 0,
+        balance,
         totalEarned,
         pendingPayments,
       });
@@ -89,10 +89,10 @@ export function useEarnings() {
     }
   };
 
-  // Check if current date is in withdrawal period (26-30)
+  // Check if current date is in withdrawal period (26-31)
   const isWithdrawalPeriod = () => {
     const today = new Date().getDate();
-    return today >= 26 && today <= 30;
+    return today >= 26 && today <= 31;
   };
 
   // Calculate balance based on month earnings

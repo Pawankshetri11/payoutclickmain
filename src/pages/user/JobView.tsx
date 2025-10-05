@@ -38,6 +38,9 @@ export default function JobView() {
     if (!jobId) return;
     
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      
       const { data: jobData, error } = await supabase
         .from('jobs')
         .select('*')
@@ -63,13 +66,37 @@ export default function JobView() {
             ["Follow instructions carefully", "Use provided codes"],
         });
 
-        // Query user's actual earnings from this job
-        // This would be calculated from task_submissions table
-        setUserEarnings({
-          fromThisJob: 0,
-          totalEarnings: 0,
-          completedTasks: 0,
-        });
+        // Fetch user's earnings from this specific job
+        if (user) {
+          const { data: userTasks } = await supabase
+            .from('tasks')
+            .select('amount, status')
+            .eq('job_id', jobId)
+            .eq('user_id', user.id);
+
+          const fromThisJob = (userTasks || [])
+            .filter(t => t.status === 'approved')
+            .reduce((sum, t) => sum + t.amount, 0);
+
+          const completedTasks = (userTasks || [])
+            .filter(t => t.status === 'approved')
+            .length;
+
+          // Get total earnings across all jobs
+          const { data: allTasks } = await supabase
+            .from('tasks')
+            .select('amount')
+            .eq('user_id', user.id)
+            .eq('status', 'approved');
+
+          const totalEarnings = (allTasks || []).reduce((sum, t) => sum + t.amount, 0);
+
+          setUserEarnings({
+            fromThisJob,
+            totalEarnings,
+            completedTasks,
+          });
+        }
       }
     } catch (error: any) {
       console.error('Error fetching job:', error);

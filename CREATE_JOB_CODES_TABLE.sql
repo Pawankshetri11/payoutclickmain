@@ -58,6 +58,7 @@ DECLARE
   v_code_id UUID;
   v_job_reward NUMERIC;
   v_code_used BOOLEAN;
+  v_job_type TEXT;
 BEGIN
   -- Check if code exists and is unused
   SELECT id, used INTO v_code_id, v_code_used
@@ -74,8 +75,8 @@ BEGIN
     RETURN;
   END IF;
 
-  -- Get job reward
-  SELECT amount INTO v_job_reward
+  -- Get job details
+  SELECT amount, type INTO v_job_reward, v_job_type
   FROM public.jobs
   WHERE id = p_job_id;
 
@@ -84,28 +85,39 @@ BEGIN
     RETURN;
   END IF;
 
-  -- Mark code as used (store user_id from auth.users)
+  -- Mark code as used
   UPDATE public.job_codes
   SET used = true,
       used_by = p_user_id,
       used_at = NOW()
   WHERE id = v_code_id;
 
-  -- Credit user account (profiles.user_id references auth.users.id)
-  UPDATE public.profiles
-  SET balance = COALESCE(balance, 0) + v_job_reward,
-      total_earned = COALESCE(total_earned, 0) + v_job_reward
-  WHERE user_id = p_user_id;
+  -- For code-only tasks, create approved task immediately
+  -- For image tasks, task will be created when image is submitted
+  IF v_job_type = 'code' THEN
+    INSERT INTO public.tasks (
+      job_id,
+      user_id,
+      amount,
+      status,
+      submitted_code,
+      submitted_at,
+      approved_at
+    ) VALUES (
+      p_job_id,
+      p_user_id,
+      v_job_reward,
+      'approved',
+      p_code,
+      NOW(),
+      NOW()
+    );
 
-  -- Check if update was successful
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Profile not found for user_id: %', p_user_id;
+    -- Increment job completed count
+    UPDATE public.jobs
+    SET completed = completed + 1
+    WHERE id = p_job_id;
   END IF;
-
-  -- Increment job completed count
-  UPDATE public.jobs
-  SET completed = completed + 1
-  WHERE id = p_job_id;
 
   RETURN QUERY SELECT true, 'Code verified successfully'::TEXT, v_job_reward;
 EXCEPTION

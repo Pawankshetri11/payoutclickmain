@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   ArrowLeft, 
@@ -19,13 +18,17 @@ import {
   AlertCircle
 } from "lucide-react";
 import { useTasks } from "@/hooks/useTasks";
+import { useJobCodes } from "@/hooks/useJobCodes";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function TaskDetail() {
   const { taskId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { submitTask } = useTasks();
+  const { verifyCode: verifyJobCode } = useJobCodes(taskId);
   
   const [task, setTask] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,6 +37,7 @@ export default function TaskDetail() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [codeVerified, setCodeVerified] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [verificationReward, setVerificationReward] = useState<number>(0);
 
   useEffect(() => {
     fetchTaskDetails();
@@ -74,29 +78,41 @@ export default function TaskDetail() {
     }
   };
 
-  const verifyCode = async (code: string) => {
-    if (!task || !code.trim()) {
-      setCodeVerified(false);
+  const handleCodeChange = (value: string) => {
+    setSubmittedCode(value.toUpperCase());
+    setCodeVerified(false);
+    setVerificationReward(0);
+  };
+
+  const handleVerifyCode = async () => {
+    if (!user) {
+      toast.error("You must be logged in");
+      return;
+    }
+
+    if (!submittedCode.trim()) {
+      toast.error("Please enter a code");
       return;
     }
 
     try {
-      // job_codes table needs to be created in database
-      // For now, verification is disabled until table exists
-      setCodeVerified(false);
-      toast.error("Code verification unavailable - job_codes table not created yet");
+      const result = await verifyJobCode(submittedCode, user.id);
+      
+      if (result?.success) {
+        setCodeVerified(true);
+        setVerificationReward(result.reward || 0);
+        
+        // For code-only tasks, navigate back immediately
+        if (task?.type === 'code') {
+          setTimeout(() => {
+            navigate("/user/tasks");
+          }, 2000);
+        }
+      } else {
+        setCodeVerified(false);
+      }
     } catch (error: any) {
       console.error('Error verifying code:', error);
-      setCodeVerified(false);
-      toast.error("Unable to verify code");
-    }
-  };
-
-  const handleCodeChange = (value: string) => {
-    setSubmittedCode(value);
-    if (value.trim()) {
-      verifyCode(value);
-    } else {
       setCodeVerified(false);
     }
   };
@@ -113,14 +129,15 @@ export default function TaskDetail() {
   const handleSubmit = async () => {
     if (!task) return;
 
-    // Validate based on task type
-    if (task.type === 'code' && (!submittedCode.trim() || !codeVerified)) {
-      toast.error("Please enter a valid verified code");
+    // For code tasks, verification already credited the amount
+    if (task.type === 'code') {
+      toast.error("Code task already completed");
       return;
     }
 
-    if (task.type === 'image' && (!submittedCode.trim() || !codeVerified || !submittedImage)) {
-      toast.error("Please provide both verified code and image");
+    // For image tasks, need to submit for review
+    if (!codeVerified || !submittedImage) {
+      toast.error("Please verify code and upload image");
       return;
     }
 
@@ -129,35 +146,30 @@ export default function TaskDetail() {
     try {
       let imageUrl = "";
       
-      // Upload image if provided
-      if (submittedImage) {
-        const fileExt = submittedImage.name.split('.').pop();
-        const fileName = `${Date.now()}.${fileExt}`;
-        
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('task-submissions')
-          .upload(fileName, submittedImage);
+      // Upload image
+      const fileExt = submittedImage.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('task-submissions')
+        .upload(fileName, submittedImage);
 
-        if (uploadError) throw uploadError;
-        
-        const { data: { publicUrl } } = supabase.storage
-          .from('task-submissions')
-          .getPublicUrl(fileName);
-        
-        imageUrl = publicUrl;
-      }
+      if (uploadError) throw uploadError;
+      
+      const { data: { publicUrl } } = supabase.storage
+        .from('task-submissions')
+        .getPublicUrl(fileName);
+      
+      imageUrl = publicUrl;
 
-      // Mock code usage tracking - would be implemented with job_codes table
-      console.log('Code marked as used:', submittedCode.trim());
-
-      // Submit task
+      // Submit task for admin review (image tasks)
       await submitTask(task.id, task.amount, {
         code: submittedCode.trim(),
         image: imageUrl
       });
 
-      toast.success("Task submitted successfully!");
-      navigate("/user/tasks");
+      toast.success("Task submitted for review!");
+      navigate("/user/my-tasks");
     } catch (error: any) {
       console.error('Error submitting task:', error);
       toast.error("Failed to submit task");
@@ -262,29 +274,38 @@ export default function TaskDetail() {
               {/* Code Input */}
               <div className="space-y-2">
                 <Label htmlFor="code">Task Code *</Label>
-                <div className="relative">
-                  <Input
-                    id="code"
-                    placeholder="Enter the task code"
-                    value={submittedCode}
-                    onChange={(e) => handleCodeChange(e.target.value)}
-                    className={codeVerified ? "border-green-500" : submittedCode ? "border-red-500" : ""}
-                  />
-                  {submittedCode && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      {codeVerified ? (
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Input
+                      id="code"
+                      placeholder="Enter the task code"
+                      value={submittedCode}
+                      onChange={(e) => handleCodeChange(e.target.value)}
+                      className={codeVerified ? "border-green-500" : ""}
+                      disabled={codeVerified}
+                      maxLength={10}
+                    />
+                    {codeVerified && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
                         <CheckCircle className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <AlertCircle className="h-4 w-4 text-red-500" />
-                      )}
-                    </div>
-                  )}
+                      </div>
+                    )}
+                  </div>
+                  <Button
+                    onClick={handleVerifyCode}
+                    disabled={!submittedCode.trim() || codeVerified}
+                    variant={codeVerified ? "outline" : "default"}
+                  >
+                    {codeVerified ? "Verified" : "Verify"}
+                  </Button>
                 </div>
-                {submittedCode && !codeVerified && (
-                  <p className="text-sm text-red-500">Invalid or already used code</p>
-                )}
                 {codeVerified && (
-                  <p className="text-sm text-green-500">Code verified successfully!</p>
+                  <Alert className="bg-success/10 border-success/20">
+                    <CheckCircle className="h-4 w-4 text-success" />
+                    <AlertDescription className="text-success">
+                      Code verified! ₹{verificationReward} {task?.type === 'code' ? 'credited to your account' : 'will be credited after image approval'}
+                    </AlertDescription>
+                  </Alert>
                 )}
               </div>
 
@@ -341,18 +362,29 @@ export default function TaskDetail() {
                 <AlertDescription>
                   {task.type === 'code' 
                     ? "Code tasks are verified automatically and earnings are credited immediately."
-                    : "Image + Code tasks require admin approval after code verification."
+                    : "Image + Code tasks: Code must be verified first, then upload image for admin approval."
                   }
                 </AlertDescription>
               </Alert>
 
-              <Button 
-                onClick={handleSubmit}
-                disabled={isSubmitting || !codeVerified || (task.type === 'image' && !submittedImage)}
-                className="w-full"
-              >
-                {isSubmitting ? "Submitting..." : "Submit Task"}
-              </Button>
+              {task.type === 'image' && (
+                <Button 
+                  onClick={handleSubmit}
+                  disabled={isSubmitting || !codeVerified || !submittedImage}
+                  className="w-full"
+                >
+                  {isSubmitting ? "Submitting..." : "Submit for Review"}
+                </Button>
+              )}
+              
+              {task.type === 'code' && codeVerified && (
+                <Alert className="bg-success/10 border-success/20">
+                  <CheckCircle className="h-4 w-4 text-success" />
+                  <AlertDescription className="text-success font-medium">
+                    Task completed! Redirecting...
+                  </AlertDescription>
+                </Alert>
+              )}
             </CardContent>
           </Card>
         </div>

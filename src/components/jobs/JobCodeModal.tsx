@@ -22,7 +22,7 @@ interface JobCodeModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   job: {
-    id: number;
+    id: string;
     title: string;
     type: "code" | "image";
     vacancies: number;
@@ -39,7 +39,7 @@ export function JobCodeModal({ open, onOpenChange, job }: JobCodeModalProps) {
   const [userCode, setUserCode] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
   
-  const { codes, verifyCode } = useJobCodes(job.id.toString());
+  const { codes, verifyCode } = useJobCodes(job.id);
 
   const unusedCodes = codes.filter(code => !code.used);
   const availableCount = unusedCodes.length;

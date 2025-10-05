@@ -48,6 +48,9 @@ export default function AdminLogin() {
             return;
           }
 
+          // Set admin flag in localStorage
+          localStorage.setItem('is_admin', 'true');
+          
           toast.success("Admin login successful!");
           navigate("/admin");
         } catch (roleError) {

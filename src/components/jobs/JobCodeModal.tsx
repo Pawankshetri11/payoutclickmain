@@ -4,11 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { 
   Code, 
-  Copy, 
   RefreshCw, 
   CheckCircle,
   Users,
@@ -17,6 +15,8 @@ import {
   AlertTriangle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useJobCodes } from "@/hooks/useJobCodes";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface JobCodeModalProps {
   open: boolean;
@@ -35,54 +35,35 @@ interface JobCodeModalProps {
 
 export function JobCodeModal({ open, onOpenChange, job }: JobCodeModalProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [userCode, setUserCode] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
+  
+  const { codes, verifyCode } = useJobCodes(job.id.toString());
 
-  // Generate random codes for demonstration
-  const generateCodes = (count: number): string[] => {
-    const codes = [];
-    for (let i = 0; i < count; i++) {
-      const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-      codes.push(code);
-    }
-    return codes;
-  };
-
-  const jobCodes = job.codes || generateCodes(job.vacancies);
-  const usedCodes = job.usedCodes || [];
-  const availableCodes = jobCodes.filter(code => !usedCodes.includes(code));
+  const unusedCodes = codes.filter(code => !code.used);
+  const availableCount = unusedCodes.length;
 
   const handleCodeVerification = async () => {
-    setIsVerifying(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    if (availableCodes.includes(userCode.toUpperCase())) {
+    if (!user) {
       toast({
-        title: "Code Verified!",
-        description: `Task completed successfully. ₹${job.reward} has been added to your account.`,
-        className: "bg-success/10 text-success border-success/20"
-      });
-      setUserCode("");
-      onOpenChange(false);
-    } else {
-      toast({
-        title: "Invalid Code",
-        description: "The code you entered is either invalid or already used.",
+        title: "Error",
+        description: "You must be logged in to verify codes",
         variant: "destructive"
       });
+      return;
+    }
+
+    setIsVerifying(true);
+    
+    const result = await verifyCode(userCode.toUpperCase(), user.id);
+    
+    if (result?.success) {
+      setUserCode("");
+      onOpenChange(false);
     }
     
     setIsVerifying(false);
-  };
-
-  const copyCode = (code: string) => {
-    navigator.clipboard.writeText(code);
-    toast({
-      title: "Code Copied",
-      description: "Code has been copied to clipboard",
-    });
   };
 
   return (
@@ -114,7 +95,7 @@ export function JobCodeModal({ open, onOpenChange, job }: JobCodeModalProps) {
                 </Badge>
                 <Badge variant="outline" className="flex items-center gap-1">
                   <Users className="h-3 w-3" />
-                  {availableCodes.length} / {job.vacancies} available
+                  {availableCount} / {job.vacancies} available
                 </Badge>
                 <Badge variant="outline" className="flex items-center gap-1">
                   <Clock className="h-3 w-3" />
@@ -175,36 +156,6 @@ export function JobCodeModal({ open, onOpenChange, job }: JobCodeModalProps) {
             </CardContent>
           </Card>
 
-          {/* Admin View: Available Codes (only show for admin/testing) */}
-          {process.env.NODE_ENV === "development" && (
-            <Card className="border-dashed border-warning">
-              <CardHeader>
-                <CardTitle className="text-warning">Developer View - Available Codes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {availableCodes.slice(0, 12).map((code, index) => (
-                    <div key={index} className="flex items-center gap-1 p-2 bg-muted rounded text-sm">
-                      <code className="flex-1 font-mono">{code}</code>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => copyCode(code)}
-                        className="h-6 w-6 p-0"
-                      >
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-                {availableCodes.length > 12 && (
-                  <p className="text-xs text-muted-foreground mt-2">
-                    ... and {availableCodes.length - 12} more codes
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          )}
         </div>
       </DialogContent>
     </Dialog>

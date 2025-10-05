@@ -2,9 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
@@ -18,26 +16,27 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useJobCodes } from "@/hooks/useJobCodes";
 
 export default function JobCodeManager() {
   const { jobId } = useParams();
   const navigate = useNavigate();
   
   const [job, setJob] = useState<any>(null);
-  const [codes, setCodes] = useState<any[]>([]);
   const [newCodes, setNewCodes] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  const { codes, loading: codesLoading, fetchCodes, saveCodes, deleteCode } = useJobCodes(jobId);
+
   useEffect(() => {
-    fetchJobAndCodes();
+    fetchJobDetails();
   }, [jobId]);
 
-  const fetchJobAndCodes = async () => {
+  const fetchJobDetails = async () => {
     if (!jobId) return;
 
     try {
-      // Fetch job details
       const { data: jobData, error: jobError } = await supabase
         .from('jobs')
         .select('*')
@@ -46,12 +45,8 @@ export default function JobCodeManager() {
 
       if (jobError) throw jobError;
       setJob(jobData);
-
-      // For now, use mock data as job_codes table needs to be created
-      const codesData = [];
-      setCodes(codesData || []);
     } catch (error: any) {
-      console.error('Error fetching job and codes:', error);
+      console.error('Error fetching job:', error);
       toast.error('Failed to load job details');
     } finally {
       setIsLoading(false);
@@ -92,30 +87,18 @@ export default function JobCodeManager() {
     setIsGenerating(true);
     try {
       const codeList = newCodes.split('\n').filter(code => code.trim());
-      const codeInserts = codeList.map(code => ({
-        job_id: jobId,
-        code: code.trim(),
-        used: false
-      }));
-
-      // Mock code saving for now
-      console.log('Codes would be saved:', codeInserts);
-
-      toast.success(`${codeList.length} codes added successfully`);
-      setNewCodes("");
-      fetchJobAndCodes();
-    } catch (error: any) {
-      console.error('Error saving codes:', error);
-      toast.error('Failed to save codes');
+      const success = await saveCodes(codeList);
+      
+      if (success) {
+        setNewCodes("");
+      }
     } finally {
       setIsGenerating(false);
     }
   };
 
   const handleDeleteCode = async (codeId: string) => {
-    // Mock delete for now
-    console.log('Code would be deleted:', codeId);
-    toast.success("Code deleted successfully");
+    await deleteCode(codeId);
   };
 
   const handleDownloadCodes = () => {

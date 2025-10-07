@@ -3,7 +3,7 @@
 -- This version ensures user exists and creates proper withdrawal
 -- =============================================
 
-DO $$
+DO $$ 
 DECLARE
   v_email text := 'pkr994223@gmail.com'; -- Change to your test email
   v_amount numeric := 500.00;

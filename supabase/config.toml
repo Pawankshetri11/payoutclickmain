@@ -11,3 +11,12 @@ verify_jwt = true
 
 [functions.resolve-referral]
 verify_jwt = false
+
+[functions.send-email]
+verify_jwt = true
+
+[functions.send-kyc-email]
+verify_jwt = true
+
+[functions.send-withdrawal-email]
+verify_jwt = true

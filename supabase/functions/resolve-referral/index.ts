@@ -7,9 +7,10 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { 
-      status: 204,
+      status: 200,
       headers: corsHeaders 
     });
   }
@@ -18,7 +19,13 @@ serve(async (req) => {
     const { code } = await req.json();
     if (!code || typeof code !== 'string') {
       console.log('Invalid code type or missing');
-      return new Response(JSON.stringify({ error: 'Invalid code' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
+      return new Response(
+        JSON.stringify({ error: 'Invalid code', referrer_id: null }), 
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+          status: 200 
+        }
+      );
     }
 
     const sanitized = code.trim().toUpperCase();

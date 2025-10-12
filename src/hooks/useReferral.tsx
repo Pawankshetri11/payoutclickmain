@@ -198,27 +198,17 @@ export function useReferral() {
         return false;
       }
 
-      // Extract the prefix from the code (8 chars after REF)
-      const prefix = sanitized.substring(3, 11).toLowerCase();
-      
-      // Search directly in profiles table
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .limit(1000);
+      // Use edge function to resolve referral code
+      const { data: resolveData, error: resolveError } = await supabase.functions.invoke('resolve-referral', {
+        body: { code: sanitized }
+      });
 
-      if (profilesError) {
-        console.error('❌ Database error:', profilesError);
+      if (resolveError) {
+        console.error('❌ Error resolving referral code:', resolveError);
         return false;
       }
 
-      // Find matching profile
-      const match = (profiles || []).find((p: any) => {
-        const id = (p.user_id || '').replace(/-/g, '').toLowerCase();
-        return id.substring(0, 8) === prefix;
-      });
-      
-      const isValid = !!match;
+      const isValid = !!resolveData?.referrer_id;
       console.log('✅ Validation result:', isValid);
       return isValid;
     } catch (error: any) {
@@ -239,40 +229,27 @@ export function useReferral() {
         toast.error('Invalid referral code format. Must be REF + 8 characters');
         return false;
       }
-      
-      // Extract the prefix from the code (8 chars after REF)
-      const prefix = sanitized.substring(3, 11).toLowerCase();
-      console.log('🔑 Extracted prefix:', prefix);
-      
-      // Search directly in profiles table
-      console.log('🔍 Searching profiles...');
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('user_id, name')
-        .limit(1000);
 
-      if (profilesError) {
-        console.error('❌ Database error:', profilesError);
-        toast.error('Error searching for referral code');
+      // Use edge function to resolve referral code
+      console.log('🔍 Resolving referral code via edge function...');
+      const { data: resolveData, error: resolveError } = await supabase.functions.invoke('resolve-referral', {
+        body: { code: sanitized }
+      });
+
+      if (resolveError) {
+        console.error('❌ Error resolving referral code:', resolveError);
+        toast.error('Error validating referral code');
         return false;
       }
 
-      console.log('📊 Found profiles:', profiles?.length);
+      const referrerId = resolveData?.referrer_id;
 
-      // Find matching profile
-      const match = (profiles || []).find((p: any) => {
-        const id = (p.user_id || '').replace(/-/g, '').toLowerCase();
-        const first8 = id.substring(0, 8);
-        return first8 === prefix;
-      });
-
-      if (!match) {
-        console.log('❌ No matching user found for prefix:', prefix);
+      if (!referrerId) {
+        console.log('❌ No matching user found for code:', sanitized);
         toast.error('Invalid referral code. Please check and try again.');
         return false;
       }
 
-      const referrerId = match.user_id;
       const userId = newUserId || user?.id;
 
       console.log('✅ Found referrer:', referrerId, 'for user:', userId);

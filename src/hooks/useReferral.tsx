@@ -324,14 +324,41 @@ export function useReferral() {
         return false;
       }
 
-      // Check if user already has a referrer
-      const { data: existingProfile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
+      // Wait for profile to be created (with retries)
+      let existingProfile: any = null;
+      let attempts = 0;
+      const maxAttempts = 5;
+      
+      console.log('⏳ Waiting for profile to be created...');
+      
+      while (attempts < maxAttempts) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle();
+        
+        if (profile) {
+          existingProfile = profile;
+          console.log('✅ Profile found:', profile);
+          break;
+        }
+        
+        attempts++;
+        console.log(`⏳ Profile not found yet, attempt ${attempts}/${maxAttempts}...`);
+        
+        if (attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+        }
+      }
 
-      if (existingProfile && (existingProfile as any).referred_by) {
+      if (!existingProfile) {
+        console.error('❌ Profile not found after retries');
+        toast.error('Profile not ready. Please try again.');
+        return false;
+      }
+
+      if (existingProfile.referred_by) {
         toast.error('You have already used a referral code');
         return false;
       }
@@ -357,22 +384,25 @@ export function useReferral() {
       }
 
       // Update user profile with referral info
-      const { error: profileError } = await supabase
+      console.log('📝 Updating profile with referred_by:', referrerId);
+      const { data: updateData, error: profileError } = await supabase
         .from('profiles')
         .update({ referred_by: referrerId } as any)
-        .eq('user_id', userId);
+        .eq('user_id', userId)
+        .select();
 
       if (profileError) {
-        console.error('Error updating profile:', profileError);
+        console.error('❌ Error updating profile:', profileError);
         toast.error('Failed to update profile with referral info');
         return false;
       }
       
+      console.log('✅ Profile updated successfully:', updateData);
       toast.success('Referral code applied successfully!');
       await fetchReferralData(); // Refresh data
       return true;
     } catch (error: any) {
-      console.error('Error applying referral code:', error);
+      console.error('💥 Error applying referral code:', error);
       toast.error('Failed to apply referral code');
       return false;
     }

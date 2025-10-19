@@ -72,6 +72,11 @@ useEffect(() => {
 
     setLoading(true);
     try {
+      // Get referral code from form or localStorage
+      const refCode = formData.referralCode.trim() || localStorage.getItem('pending_referral_code') || '';
+      
+      console.log('🎯 Starting signup with referral code:', refCode);
+      
       // Create user account
       const { data, error } = await supabase.auth.signUp({
         email: formData.email,
@@ -88,9 +93,26 @@ useEffect(() => {
       if (error) throw error;
 
       if (data.user) {
+        console.log('✅ User created:', data.user.id);
+        
         // Apply referral code if present
-        if (formData.referralCode.trim()) {
-          await applyReferralCode(formData.referralCode, data.user.id);
+        if (refCode) {
+          console.log('🔗 Applying referral code:', refCode);
+          try {
+            const success = await applyReferralCode(refCode, data.user.id);
+            if (success) {
+              console.log('✅ Referral code applied successfully');
+              toast.success("Account created with referral code!");
+            } else {
+              console.log('⚠️ Referral code application failed');
+            }
+          } catch (refError: any) {
+            console.error('❌ Referral error:', refError);
+            // Don't block signup if referral fails
+          }
+          
+          // Clear pending referral code
+          localStorage.removeItem('pending_referral_code');
         }
 
         if (data.session) {
